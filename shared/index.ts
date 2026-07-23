@@ -2,6 +2,7 @@
  * Re-exports + helpers runtime compartidos (front + worker).
  */
 export * from "./types.ts";
+export * from "./suggestions.ts";
 
 export function newId(prefix = "id"): string {
   const rand =

@@ -912,6 +912,50 @@ html.wa-dark .msg.assistant {
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
 }
 
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px 4px;
+  border-top: 1px solid var(--ir-line);
+  background: transparent;
+}
+
+.suggestion-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--ir-muted);
+  background: var(--ir-glass);
+  border: 1px solid var(--ir-line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms, background 120ms;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.suggestion-pill span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 32ch;
+}
+
+.suggestion-pill:hover:not(:disabled) {
+  color: var(--ir-text, #e2e8f0);
+  border-color: color-mix(in srgb, var(--ir-cyan, #22d3ee) 40%, transparent);
+  background: color-mix(in srgb, var(--ir-cyan, #22d3ee) 8%, transparent);
+}
+
+.suggestion-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 html.wa-light .composer {
   box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
 }

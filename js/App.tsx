@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, clearSession, getStoredUser, getToken, setSession, ApiError } from "./api.ts";
 import { useTheme } from "./theme.ts";
 import type { ChatMessage, RagChunk, RagDocument, SourceFragment, Space } from "../shared/types.ts";
-import { isSupportedFilename, newId } from "../shared/index.ts";
+import { isSupportedFilename, newId, suggestionsForSpaceName } from "../shared/index.ts";
 
 type MainView = "chat" | "chunks";
 
@@ -622,6 +622,22 @@ export function App() {
                     <iconify-icon icon="svg-spinners:ring-resize" width="16" height="16" /> Buscando…
                   </div>
                 )}
+              </div>
+
+              <div className="suggestions" aria-label="Preguntas sugeridas">
+                {suggestionsForSpaceName(active?.name).map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    className="suggestion-pill"
+                    onClick={() => setInput(q)}
+                    disabled={!spaceId || busy}
+                    title={q}
+                  >
+                    <iconify-icon icon="mdi:lightbulb-on-outline" width="14" height="14" />
+                    <span>{q}</span>
+                  </button>
+                ))}
               </div>
 
               <div className="composer">
