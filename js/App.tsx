@@ -521,6 +521,17 @@ const [loginUser, setLoginUser] = useState("admn");
               />
               <span className="brand-status__label">{healthOk ? "lista" : "offline"}</span>
             </span>
+            <nav className="main-nav" aria-label="Navegación principal">
+              <button
+                type="button"
+                className={`main-nav__link${mainView === "home" ? " main-nav__link--active" : ""}`}
+                onClick={goHome}
+                title="Mis espacios"
+              >
+                <iconify-icon icon="mdi:notebook-multiple" width="16" height="16" />
+                <span>Espacios</span>
+              </button>
+            </nav>
           </div>
           <div className="app-header__right">
             <button type="button" className="btn-text" onClick={toggleTheme} title="Tema">
@@ -716,13 +727,15 @@ const [loginUser, setLoginUser] = useState("admn");
           {mainView === "home" ? (
             <>
               <header className="topbar">
-                <div>
-                  <h2>Mis espacios</h2>
-                  <p className="caption">
-                    {spaces.length} en total · selecciona uno para empezar
-                  </p>
+                <div className="topbar__row topbar__row--caption">
+                  <div className="topbar__caption">
+                    <h2>Mis espacios</h2>
+                    <p className="caption">
+                      {spaces.length} en total · selecciona uno para empezar
+                    </p>
+                  </div>
                 </div>
-                <div className="actions" />
+                <div className="topbar__row topbar__row--tools" role="toolbar" aria-label="Herramientas de la home" />
               </header>
 
               <div className="home">
@@ -796,7 +809,7 @@ const [loginUser, setLoginUser] = useState("admn");
           ) : (
             <>
               <header className="topbar">
-                <div>
+                <div className="topbar__row topbar__row--caption">
                   <button
                     type="button"
                     className="btn-text btn-text--back"
@@ -806,22 +819,24 @@ const [loginUser, setLoginUser] = useState("admn");
                   >
                     <iconify-icon icon="mdi:arrow-left" width="18" height="18" />
                   </button>
-                  <h2
-                    className={mainView === "chat" && active ? "topbar-title--editable" : undefined}
-                    title={mainView === "chat" && active ? "Doble clic para editar espacio" : undefined}
-                    onDoubleClick={() => {
-                      if (mainView === "chat" && active) openEditSpace(active);
-                    }}
-                  >
-                    {mainView === "chunks" && selectedDoc
-                      ? selectedDoc.filename
-                      : active?.name || "ISA RAG"}
-                  </h2>
-                  <p className="caption">
-                    {mainView === "chunks"
-                      ? `${chunks.length} chunks · vista de fragmentos`
-                      : active?.description || "RAG · Neon pgvector · neon-glass"}
-                  </p>
+                  <div className="topbar__caption">
+                    <h2
+                      className={mainView === "chat" && active ? "topbar-title--editable" : undefined}
+                      title={mainView === "chat" && active ? "Doble clic para editar espacio" : undefined}
+                      onDoubleClick={() => {
+                        if (mainView === "chat" && active) openEditSpace(active);
+                      }}
+                    >
+                      {mainView === "chunks" && selectedDoc
+                        ? selectedDoc.filename
+                        : active?.name || "ISA RAG"}
+                    </h2>
+                    <p className="caption">
+                      {mainView === "chunks"
+                        ? `${chunks.length} chunks · vista de fragmentos`
+                        : active?.description || "RAG · Neon pgvector · neon-glass"}
+                    </p>
+                  </div>
                   {mainView !== "chunks" && active && statsBySpace[active.id] && (
                     <div className="topbar-stats" aria-label="Estadísticas del espacio">
                       <span className="stat-chip" title="Eventos totales">
@@ -856,10 +871,11 @@ const [loginUser, setLoginUser] = useState("admn");
                     </div>
                   )}
                 </div>
-                <div className="actions">
+                <div className="topbar__row topbar__row--tools" role="toolbar" aria-label="Herramientas del espacio">
                   {mainView === "chunks" && (
                     <button type="button" className="btn-text" onClick={backToChat} title="Volver al chat">
                       <iconify-icon icon="mdi:chat-outline" width="18" height="18" />
+                      <span>Volver al chat</span>
                     </button>
                   )}
                   {mainView === "chat" && (
@@ -870,8 +886,17 @@ const [loginUser, setLoginUser] = useState("admn");
                       title="Reiniciar chat"
                     >
                       <iconify-icon icon="mdi:refresh" width="18" height="18" />
+                      <span>Reiniciar</span>
                     </button>
                   )}
+                  <button type="button" className="btn-text" onClick={toggleTheme} title="Tema">
+                    <iconify-icon
+                      icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
+                      width="18"
+                      height="18"
+                    />
+                    <span>Tema</span>
+                  </button>
                 </div>
               </header>
 
