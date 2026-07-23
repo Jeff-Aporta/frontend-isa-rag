@@ -8,6 +8,8 @@ import type {
   RagChunk,
   RagDocument,
   Space,
+  SpaceStats,
+  SpaceStatsUsersResponse,
   UpdateSpaceRequest,
 } from "../shared/types.ts";
 
@@ -138,4 +140,14 @@ export const api = {
     }),
   ask: (body: AskRequest) =>
     req<AskResponse>("/api/ask", { method: "POST", body: JSON.stringify(body) }),
+  spaceStats: (spaceId: string, days?: number) => {
+    const q = days && days > 0 ? `?days=${days}` : "";
+    return req<{ stats: SpaceStats }>(`/api/spaces/${encodeURIComponent(spaceId)}/stats${q}`);
+  },
+  spaceStatsUsers: (spaceId: string, days?: number) => {
+    const q = days && days > 0 ? `?days=${days}` : "";
+    return req<SpaceStatsUsersResponse>(
+      `/api/spaces/${encodeURIComponent(spaceId)}/stats/users${q}`,
+    );
+  },
 };

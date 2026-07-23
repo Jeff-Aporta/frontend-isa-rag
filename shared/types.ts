@@ -77,6 +77,52 @@ export interface AskRequest {
   provider?: LlmProviderId;
 }
 
+// —— Estadísticas de uso por espacio ——
+
+export type StatEvent =
+  | "ask"
+  | "upload"
+  | "index"
+  | "chunk_view"
+  | "create"
+  | "update"
+  | "delete"
+  | "embed";
+
+export interface SpaceStatsTopUser {
+  username: string;
+  count: number;
+}
+
+export interface SpaceStatsLastEvent {
+  event: StatEvent;
+  username: string;
+  ts: string;
+}
+
+export interface SpaceStats {
+  spaceId: string;
+  total: number;
+  perEvent: Record<StatEvent, number>;
+  topUsers: SpaceStatsTopUser[];
+  lastEvent: SpaceStatsLastEvent | null;
+  windowDays: number | null;
+}
+
+export interface SpaceStatsUserRow {
+  username: string;
+  event: StatEvent;
+  count: number;
+  lastAt: string;
+}
+
+export interface SpaceStatsUsersResponse {
+  spaceId: string;
+  rows: SpaceStatsUserRow[];
+  events: StatEvent[];
+  windowDays: number | null;
+}
+
 export interface AskResponse {
   answer: string;
   sources: SourceFragment[];

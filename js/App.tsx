@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, clearSession, getStoredUser, getToken, setSession, ApiError } from "./api.ts";
 import { useTheme } from "./theme.ts";
-import type { ChatMessage, RagChunk, RagDocument, SourceFragment, Space } from "../shared/types.ts";
+import type { ChatMessage, RagChunk, RagDocument, SourceFragment, Space, SpaceStats } from "../shared/types.ts";
 import { isSupportedFilename, newId, suggestionsForSpaceName } from "../shared/index.ts";
 
 type MainView = "home" | "chat" | "chunks";
@@ -81,9 +81,10 @@ export function App() {
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [authed, setAuthed] = useState(() => !!getToken());
-  const [authUser, setAuthUser] = useState<string | null>(() => getStoredUser());
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [loginUser, setLoginUser] = useState("admn");
+const [authUser, setAuthUser] = useState<string | null>(() => getStoredUser());
+const [loginOpen, setLoginOpen] = useState(false);
+const [loginUser, setLoginUser] = useState("admn");
+const [statsBySpace, setStatsBySpace] = useState<Record<string, SpaceStats>>({});
   const [loginPass, setLoginPass] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
 
@@ -175,6 +176,7 @@ export function App() {
         setMainView("home");
       }
       await refreshSpaces();
+      await refreshAllStats();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -186,6 +188,28 @@ export function App() {
     const { spaces: list } = await api.listSpaces();
     setSpaces(list);
   }, []);
+
+  const refreshAllStats = useCallback(async () => {
+    if (!authed) return;
+    try {
+      const { spaces: list } = await api.listSpaces();
+      const entries = await Promise.all(
+        list.map(async (s): Promise<[string, SpaceStats | null]> => {
+          try {
+            const { stats } = await api.spaceStats(s.id);
+            return [s.id, stats];
+          } catch {
+            return [s.id, null];
+          }
+        }),
+      );
+      const next: Record<string, SpaceStats> = {};
+      for (const [id, s] of entries) if (s) next[id] = s;
+      setStatsBySpace(next);
+    } catch {
+      /* best-effort */
+    }
+  }, [authed]);
 
   const refreshDocs = useCallback(async (id: string) => {
     const { documents } = await api.listDocuments(id);
@@ -203,6 +227,7 @@ export function App() {
             setAuthed(true);
             setAuthUser(String(me.username || getStoredUser() || "admn"));
             await refreshSpaces();
+            await refreshAllStats();
           } catch {
             clearSession();
             setAuthed(false);
@@ -214,7 +239,7 @@ export function App() {
         setHealthOk(false);
       }
     })();
-  }, [refreshSpaces]);
+  }, [refreshSpaces, refreshAllStats]);
 
   async function doLogin() {
     setBusy(true);
@@ -227,6 +252,7 @@ export function App() {
       setLoginOpen(false);
       setLoginPass("");
       await refreshSpaces();
+      await refreshAllStats();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -275,6 +301,7 @@ export function App() {
       const { space } = await api.createSpace({ name });
       setNewSpaceName("");
       await refreshSpaces();
+      await refreshAllStats();
       openSpace(space.id);
     } catch (e) {
       if (needAuth(e)) {
@@ -317,6 +344,7 @@ export function App() {
     try {
       const r = await api.index(spaceId);
       await refreshDocs(spaceId);
+      await refreshAllStats();
       setMessages([]);
       setError(null);
       alert(`${r.documents} docs · ${r.chunks} chunks indexados`);
@@ -354,6 +382,7 @@ export function App() {
         createdAt: new Date().toISOString(),
       };
       setMessages((m) => [...m, asst]);
+      await refreshAllStats();
     } catch (e) {
       if (needAuth(e)) {
         setAuthed(false);
@@ -571,35 +600,62 @@ export function App() {
                     </div>
                   ) : (
                     <div className="home__grid">
-                      {spaces.map((s) => (
-                        <article
-                          key={s.id}
-                          className="space-card"
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => openSpace(s.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              openSpace(s.id);
-                            }
-                          }}
-                        >
-                          <div className="space-card__cover" aria-hidden="true">
-                            <iconify-icon icon="mdi:file-search-outline" width="28" height="28" />
-                          </div>
-                          <div className="space-card__body">
-                            <h4>{s.name}</h4>
-                            <p className="space-card__desc">
-                              {s.description || "Sin descripción"}
-                            </p>
-                          </div>
-                          <div className="space-card__meta">
-                            <span className="pill">{s.docCount ?? 0} docs</span>
-                            <span className="pill pill--ghost">abrir →</span>
-                          </div>
-                        </article>
-                      ))}
+                      {spaces.map((s) => {
+                        const st = statsBySpace[s.id];
+                        return (
+                          <article
+                            key={s.id}
+                            className="space-card"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openSpace(s.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openSpace(s.id);
+                              }
+                            }}
+                          >
+                            <div className="space-card__cover" aria-hidden="true">
+                              <iconify-icon icon="mdi:file-search-outline" width="28" height="28" />
+                            </div>
+                            <div className="space-card__body">
+                              <h4>{s.name}</h4>
+                              <p className="space-card__desc">
+                                {s.description || "Sin descripción"}
+                              </p>
+                            </div>
+                            <div className="space-card__meta">
+                              <span className="pill">{s.docCount ?? 0} docs</span>
+                              <span className="pill pill--ghost">abrir →</span>
+                            </div>
+                            <div className="space-card__stats" aria-label="Estadísticas del espacio">
+                              {st ? (
+                                <>
+                                  <span className="stat-chip" title="Eventos totales">
+                                    <iconify-icon icon="mdi:pulse" width="12" height="12" />
+                                    {st.total}
+                                  </span>
+                                  {st.perEvent.ask > 0 && (
+                                    <span className="stat-chip" title="Preguntas">
+                                      <iconify-icon icon="mdi:chat-question-outline" width="12" height="12" />
+                                      {st.perEvent.ask}
+                                    </span>
+                                  )}
+                                  {st.topUsers[0] && (
+                                    <span className="stat-chip" title={`Top usuario: ${st.topUsers[0].username}`}>
+                                      <iconify-icon icon="mdi:account-star-outline" width="12" height="12" />
+                                      {st.topUsers[0].username}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="stat-chip stat-chip--muted">sin actividad</span>
+                              )}
+                            </div>
+                          </article>
+                        );
+                      })}
                     </div>
                   )}
                 </section>
@@ -668,6 +724,39 @@ export function App() {
                       ? `${chunks.length} chunks · vista de fragmentos`
                       : active?.description || "RAG · Neon pgvector · neon-glass"}
                   </p>
+                  {mainView !== "chunks" && active && statsBySpace[active.id] && (
+                    <div className="topbar-stats" aria-label="Estadísticas del espacio">
+                      <span className="stat-chip" title="Eventos totales">
+                        <iconify-icon icon="mdi:pulse" width="12" height="12" />
+                        {statsBySpace[active.id].total}
+                      </span>
+                      {statsBySpace[active.id].perEvent.ask > 0 && (
+                        <span className="stat-chip" title="Preguntas (ask)">
+                          <iconify-icon icon="mdi:chat-question-outline" width="12" height="12" />
+                          {statsBySpace[active.id].perEvent.ask} preguntas
+                        </span>
+                      )}
+                      {statsBySpace[active.id].perEvent.upload > 0 && (
+                        <span className="stat-chip" title="Archivos subidos">
+                          <iconify-icon icon="mdi:upload-outline" width="12" height="12" />
+                          {statsBySpace[active.id].perEvent.upload} archivos
+                        </span>
+                      )}
+                      {statsBySpace[active.id].perEvent.index > 0 && (
+                        <span className="stat-chip" title="Reindexaciones">
+                          <iconify-icon icon="mdi:cog-outline" width="12" height="12" />
+                          {statsBySpace[active.id].perEvent.index} reindex
+                        </span>
+                      )}
+                      {statsBySpace[active.id].topUsers[0] && (
+                        <span className="stat-chip" title={`Top usuario: ${statsBySpace[active.id].topUsers[0].username} (${statsBySpace[active.id].topUsers[0].count} eventos)`}>
+                          <iconify-icon icon="mdi:account-star-outline" width="12" height="12" />
+                          top: {statsBySpace[active.id].topUsers[0].username} ·
+                          {" "}{statsBySpace[active.id].topUsers[0].count}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="actions">
                   {mainView === "chunks" && (
