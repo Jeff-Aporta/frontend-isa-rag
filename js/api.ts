@@ -7,6 +7,9 @@ import type {
   IndexJobResult,
   RagChunk,
   RagDocument,
+  ResourceMatchResponse,
+  ResourceQuestion,
+  ResourceMeta,
   Space,
   SpaceStats,
   SpaceStatsUsersResponse,
@@ -150,4 +153,30 @@ export const api = {
       `/api/spaces/${encodeURIComponent(spaceId)}/stats/users${q}`,
     );
   },
+
+  resourceCatalog: () =>
+    req<{ resources: ResourceMeta[] }>("/api/resources/catalog"),
+  listResourceQuestions: (spaceId: string, resourceId: string) =>
+    req<{
+      spaceId: string;
+      resourceId: string;
+      resource: ResourceMeta;
+      questions: ResourceQuestion[];
+      expectedCount: number;
+    }>(
+      `/api/spaces/${encodeURIComponent(spaceId)}/resources/${encodeURIComponent(resourceId)}/questions`,
+    ),
+  generateResourceQuestions: (spaceId: string, resourceId: string, manual?: string[]) =>
+    req<{ ok: boolean; spaceId: string; resourceId: string; questions: string[]; count: number; source: string }>(
+      `/api/spaces/${encodeURIComponent(spaceId)}/resources/${encodeURIComponent(resourceId)}/questions`,
+      {
+        method: "POST",
+        body: JSON.stringify(manual && manual.length ? { questions: manual } : {}),
+      },
+    ),
+  matchResources: (spaceId: string, question: string, top = 3) =>
+    req<ResourceMatchResponse>(
+      `/api/spaces/${encodeURIComponent(spaceId)}/resources/match`,
+      { method: "POST", body: JSON.stringify({ question, top }) },
+    ),
 };

@@ -123,6 +123,56 @@ export interface SpaceStatsUsersResponse {
   windowDays: number | null;
 }
 
+// —— Recursos (Cuestionario, Podcast, …) ——
+
+export type ResourceId =
+  | "quiz"
+  | "podcast"
+  | "summary"
+  | "mindmap"
+  | "briefing"
+  | "flashcards";
+
+export interface ResourceMeta {
+  id: ResourceId;
+  title: string;
+  description: string;
+  icon: string;
+}
+
+export const RESOURCE_CATALOG: ResourceMeta[] = [
+  { id: "quiz", title: "Cuestionario", description: "Preguntas tipo test sobre los documentos del espacio", icon: "mdi:help-circle-outline" },
+  { id: "podcast", title: "Podcast", description: "Conversación generada entre dos presentadores", icon: "mdi:microphone-outline" },
+  { id: "summary", title: "Resumen", description: "Síntesis ejecutiva del espacio", icon: "mdi:text-short" },
+  { id: "mindmap", title: "Mapa mental", description: "Ideas clave conectadas en un grafo", icon: "mdi:graph-outline" },
+  { id: "briefing", title: "Informe", description: "Documento estructurado en Markdown", icon: "mdi:file-document-outline" },
+  { id: "flashcards", title: "Tarjetas", description: "Tarjetas pregunta/respuesta para repaso", icon: "mdi:card-outline" },
+];
+
+export interface ResourceQuestion {
+  id: string;
+  spaceId: string;
+  resourceId: ResourceId;
+  text: string;
+  source: "generated" | "manual";
+  createdAt: string;
+}
+
+export interface ResourceMatch {
+  resourceId: ResourceId;
+  title: string;
+  icon: string;
+  description: string;
+  score: number;   // 0..1 (1 = idéntico)
+  bestQuestions: string[];
+}
+
+export interface ResourceMatchResponse {
+  spaceId: string;
+  question: string;
+  matches: ResourceMatch[];
+}
+
 export interface AskResponse {
   answer: string;
   sources: SourceFragment[];

@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, clearSession, getStoredUser, getToken, setSession, ApiError } from "./api.ts";
 import { useTheme } from "./theme.ts";
-import type { ChatMessage, RagChunk, RagDocument, SourceFragment, Space, SpaceStats } from "../shared/types.ts";
+import type {
+  ChatMessage,
+  RagChunk,
+  RagDocument,
+  ResourceMatch,
+  SourceFragment,
+  Space,
+  SpaceStats,
+} from "../shared/types.ts";
 import { isSupportedFilename, newId, suggestionsForSpaceName } from "../shared/index.ts";
 
 type MainView = "home" | "chat" | "chunks";
@@ -85,6 +93,8 @@ const [authUser, setAuthUser] = useState<string | null>(() => getStoredUser());
 const [loginOpen, setLoginOpen] = useState(false);
 const [loginUser, setLoginUser] = useState("admn");
 const [statsBySpace, setStatsBySpace] = useState<Record<string, SpaceStats>>({});
+const [resourceMatch, setResourceMatch] = useState<ResourceMatch[] | null>(null);
+const [matching, setMatching] = useState(false);
   const [loginPass, setLoginPass] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
 
@@ -125,12 +135,34 @@ const [statsBySpace, setStatsBySpace] = useState<Record<string, SpaceStats>>({})
     setMainView("home");
     setSelectedDocId(null);
     setChunks([]);
+    setResourceMatch(null);
   }, []);
+
+  const suggestResources = useCallback(async () => {
+    if (!spaceId) return;
+    const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+    const q = input.trim() || lastUser.trim();
+    if (!q) return;
+    setMatching(true);
+    try {
+      const res = await api.matchResources(spaceId, q, 3);
+      setResourceMatch(res.matches);
+    } catch (e) {
+      if (needAuth(e)) {
+        setAuthed(false);
+        setLoginOpen(true);
+      }
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMatching(false);
+    }
+  }, [spaceId, input, messages]);
 
   const openSpace = useCallback((id: string) => {
     setSpaceId(id);
     setMessages([]);
     setMainView("chat");
+    setResourceMatch(null);
   }, []);
 
   function openEditSpace(s: Space) {
@@ -854,6 +886,47 @@ const [statsBySpace, setStatsBySpace] = useState<Record<string, SpaceStats>>({})
                         <span>{q}</span>
                       </button>
                     ))}
+                  </div>
+
+                  <div className="resource-match" aria-label="Recursos sugeridos">
+                    <button
+                      type="button"
+                      className="resource-match__trigger"
+                      onClick={suggestResources}
+                      disabled={!spaceId || matching || busy}
+                      title={
+                        input.trim()
+                          ? `Buscar recursos afines a la pregunta`
+                          : "Buscar recursos afines a la última pregunta"
+                      }
+                    >
+                      <iconify-icon
+                        icon={matching ? "svg-spinners:ring-resize" : "mdi:auto-fix-outline"}
+                        width="14"
+                        height="14"
+                      />
+                      {matching ? "buscando recursos…" : "Recursos sugeridos"}
+                    </button>
+                    {resourceMatch && resourceMatch.length === 0 && (
+                      <span className="resource-match__empty">
+                        Sin recursos entrenados todavía para este espacio.
+                      </span>
+                    )}
+                    {resourceMatch && resourceMatch.length > 0 && (
+                      <div className="resource-match__pills">
+                        {resourceMatch.map((m) => (
+                          <div key={m.resourceId} className="rm-pill" title={m.description}>
+                            <span className="rm-pill__icon" aria-hidden="true">
+                              <iconify-icon icon={m.icon} width="14" height="14" />
+                            </span>
+                            <span className="rm-pill__title">{m.title}</span>
+                            <span className="rm-pill__score">
+                              {(m.score * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="composer">
