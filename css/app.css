@@ -356,9 +356,13 @@ html.wa-dark .space-item:hover {
 }
 
 .file-drop {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1px dashed color-mix(in srgb, var(--neon-cyan) 45%, transparent);
   border-radius: var(--ir-radius-sm);
-  padding: 8px;
+  padding: 10px 8px;
   text-align: center;
   color: var(--ir-muted);
   font-size: 11.5px;
@@ -372,6 +376,26 @@ html.wa-dark .space-item:hover {
   transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
 }
 
+.ir-file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  font-size: 0;
+}
+
+.file-drop__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+}
+
 .file-drop:hover,
 .file-drop.drag {
   border-color: var(--neon-cyan);
@@ -381,6 +405,7 @@ html.wa-dark .space-item:hover {
 
 .file-drop small {
   opacity: 0.8;
+  font-size: 10.5px;
 }
 
 .doc-list {

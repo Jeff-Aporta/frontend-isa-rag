@@ -36,7 +36,6 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [healthOk, setHealthOk] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
 
   const active = spaces.find((s) => s.id === spaceId) || null;
@@ -224,9 +223,8 @@ export function App() {
 
           <div className="panel panel--docs">
             <p className="section-title">Documentos</p>
-            <div
+            <label
               className="file-drop"
-              onClick={() => fileRef.current?.click()}
               onDragOver={(e) => {
                 e.preventDefault();
                 e.currentTarget.classList.add("drag");
@@ -238,18 +236,21 @@ export function App() {
                 onFiles(e.dataTransfer.files);
               }}
             >
-              PDF · MD · TXT · DOCX · CSV · HTML
-              <br />
-              <small>clic o arrastra</small>
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              multiple
-              hidden
-              accept=".pdf,.txt,.md,.markdown,.csv,.html,.htm,.json,.docx"
-              onChange={(e) => onFiles(e.target.files)}
-            />
+              <input
+                className="ir-file-input"
+                type="file"
+                multiple
+                accept=".pdf,.txt,.md,.markdown,.csv,.html,.htm,.json,.docx"
+                onChange={(e) => {
+                  onFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <span className="file-drop__text">
+                PDF · MD · TXT · DOCX · CSV · HTML
+                <small>clic o arrastra</small>
+              </span>
+            </label>
             <ul className="doc-list">
               {docs.map((d) => (
                 <li key={d.id}>
