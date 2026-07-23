@@ -6,7 +6,7 @@
  */
 
 export const EMBEDDING_DIMS = 384 as const;
-export const EMBEDDING_MODEL = "all-MiniLM-L6-v2" as const;
+export const EMBEDDING_MODEL = "@cf/baai/bge-small-en-v1.5" as const;
 export const DEFAULT_TOP_K = 4 as const;
 export const CHUNK_SIZE = 1000 as const;
 export const CHUNK_OVERLAP = 100 as const;
@@ -52,6 +52,14 @@ export interface SourceFragment {
   page: string | number;
   content: string;
   score?: number;
+  meta?: {
+    youtubeVideoId?: string;
+    youtubeStartMs?: number;
+    youtubeEndMs?: number;
+    youtubeUrl?: string;
+    lang?: string;
+    title?: string;
+  };
 }
 
 export interface ChatMessage {
@@ -131,11 +139,26 @@ export const SYSTEM_PROMPT =
 
 export function formatContext(sources: SourceFragment[]): string {
   return sources
-    .map(
-      (s) =>
-        `[Fragmento ${s.index} · ${s.source} · pág. ${s.page}]\n${s.content}`,
-    )
+    .map((s) => {
+      const yt = s.meta?.youtubeVideoId;
+      if (yt) {
+        const ts = formatTimestamp(s.meta?.youtubeStartMs ?? 0);
+        const url = s.meta?.youtubeUrl ?? `https://youtu.be/${yt}?t=${Math.floor((s.meta?.youtubeStartMs ?? 0) / 1000)}`;
+        return `[Fragmento ${s.index} · ${s.source} · ${s.meta?.title ?? yt} · ${ts} (${url})]\n${s.content}`;
+      }
+      return `[Fragmento ${s.index} · ${s.source} · pág. ${s.page}]\n${s.content}`;
+    })
     .join("\n\n");
+}
+
+export function formatTimestamp(ms: number): string {
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h > 0
+    ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+    : `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export function buildHumanPrompt(context: string, question: string): string {

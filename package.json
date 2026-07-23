@@ -24,7 +24,8 @@
     "webawesome",
     "typescript",
     "pgvector",
-    "sentence-transformers"
+    "workers-ai",
+    "bge-small-en-v1.5"
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

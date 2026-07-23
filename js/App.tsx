@@ -14,14 +14,32 @@ function SourcesBlock({ sources }: { sources: SourceFragment[] }) {
         <iconify-icon icon="mdi:book-open-page-variant" width="14" height="14" /> Fuentes (
         {sources.length})
       </summary>
-      {sources.map((s) => (
-        <div className="fragment" key={`${s.index}-${s.source}`}>
-          <strong>
-            Fragmento {s.index} — {s.source} — pág. {s.page}
-          </strong>
-          <p>{s.content}</p>
-        </div>
-      ))}
+      {sources.map((s) => {
+        const yt = s.meta?.youtubeVideoId;
+        const start = s.meta?.youtubeStartMs ?? 0;
+        const url =
+          s.meta?.youtubeUrl ??
+          (yt ? `https://youtu.be/${yt}?t=${Math.floor(start / 1000)}` : undefined);
+        return (
+          <div className="fragment" key={`${s.index}-${s.source}-${yt ?? s.page}`}>
+            <strong>
+              Fragmento {s.index} — {s.source} —{" "}
+              {yt ? (
+                <>
+                  <span className="pill">▶︎ {s.meta?.title ?? yt}</span>{" "}
+                  <span className="pill">{s.page}</span>{" "}
+                  <a href={url} target="_blank" rel="noreferrer">
+                    abrir en YouTube ↗
+                  </a>
+                </>
+              ) : (
+                <>pág. {s.page}</>
+              )}
+            </strong>
+            <p>{s.content}</p>
+          </div>
+        );
+      })}
     </details>
   );
 }

@@ -12,9 +12,9 @@ import {
 } from "../shared/types.ts";
 import { isSupportedFilename } from "../shared/index.ts";
 
-test("constantes FitDocs / MiniLM", () => {
+test("constantes FitDocs / Workers AI", () => {
   assert.equal(EMBEDDING_DIMS, 384);
-  assert.equal(EMBEDDING_MODEL, "all-MiniLM-L6-v2");
+  assert.equal(EMBEDDING_MODEL, "@cf/baai/bge-small-en-v1.5");
   assert.equal(CHUNK_SIZE, 1000);
   assert.equal(CHUNK_OVERLAP, 100);
   assert.equal(DEFAULT_TOP_K, 4);
