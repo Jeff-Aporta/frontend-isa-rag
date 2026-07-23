@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es" class="wa-theme-shoelace wa-palette-shoelace wa-dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ISA RAG — Chat con tus documentos</title>
+  <meta name="description" content="ISA RAG: conversa con tus PDFs y documentos. Espacios aislados, citas por fragmento, neon-glass. RAG + LangChain + MiniLM + Neon pgvector." />
+  <meta name="keywords" content="ISA RAG, RAG, NotebookLM, LangChain, sentence-transformers, pgvector, neon-glass, Jeff-Aporta" />
+  <meta name="application-name" content="ISA RAG" />
+  <meta name="author" content="Jeff-Aporta" />
+  <meta name="theme-color" content="#060d18" />
+  <meta name="app-theme-ls-key" content="isa-rag:theme" />
+  <meta name="app-icon" content="mdi:file-search-outline" />
+  <link rel="canonical" href="https://jeff-aporta.github.io/frontend-isa-rag/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_CO" />
+  <meta property="og:site_name" content="ISA RAG" />
+  <meta property="og:title" content="ISA RAG — Chat con tus documentos" />
+  <meta property="og:description" content="Conversa con tus documentos. Espacios aislados, citas [Fragmento N], estilo neon-glass." />
+  <meta property="og:url" content="https://jeff-aporta.github.io/frontend-isa-rag/" />
+  <meta property="og:image" content="https://api.iconify.design/mdi/file-search-outline.svg?color=%2322d3ee&width=512&height=512" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="ISA RAG — Chat con tus documentos" />
+  <meta name="twitter:description" content="RAG NotebookLM-style · React · Worker · Neon" />
+  <link rel="icon" href="https://api.iconify.design/mdi/file-search-outline.svg?color=%2322d3ee&width=32&height=32" type="image/svg+xml" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://esm.sh" crossorigin />
+  <link rel="preconnect" href="https://code.iconify.design" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;500;600;700&family=Figtree:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3/dist/styles/webawesome.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3/dist/styles/themes/shoelace.css" />
+  <link rel="stylesheet" href="_dist/css/app.css" />
+  <script>
+    (function () {
+      var m = "dark";
+      try {
+        var v = localStorage.getItem("isa-rag:theme");
+        if (v === "light" || v === "dark") m = v;
+      } catch (e) {}
+      document.documentElement.classList.add("wa-theme-shoelace", "wa-palette-shoelace");
+      document.documentElement.classList.add(m === "dark" ? "wa-dark" : "wa-light");
+      document.documentElement.classList.remove(m === "dark" ? "wa-light" : "wa-dark");
+      document.documentElement.style.colorScheme = m;
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", m === "light" ? "#f0f7ff" : "#060d18");
+    })();
+  </script>
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.3.1",
+      "react-dom": "https://esm.sh/react-dom@18.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?external=react",
+      "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime"
+    }
+  }
+  </script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3/dist-cdn/webawesome.loader.js"></script>
+  <script defer src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+  <script type="module" src="_dist/js/main.js"></script>
+</head>
+<body>
+  <div id="root">
+    <div class="boot" role="status" aria-live="polite" aria-busy="true">
+      <iconify-icon icon="svg-spinners:ring-resize" width="48" height="48" aria-hidden="true"></iconify-icon>
+      <p>Cargando ISA RAG…</p>
+    </div>
+  </div>
+</body>
+</html>

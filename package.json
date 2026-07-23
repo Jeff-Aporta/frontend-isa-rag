@@ -1,0 +1,43 @@
+{
+  "name": "frontend-isa-rag",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ISA RAG — chat con tus documentos (NotebookLM-style). React + WebAwesome + neon-glass. Types compartidos vía jsDelivr.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jeff-Aporta/frontend-isa-rag.git"
+  },
+  "homepage": "https://jeff-aporta.github.io/frontend-isa-rag/",
+  "bugs": {
+    "url": "https://github.com/Jeff-Aporta/frontend-isa-rag/issues"
+  },
+  "author": "Jeff-Aporta",
+  "license": "MIT",
+  "keywords": [
+    "isa-rag",
+    "rag",
+    "notebooklm",
+    "langchain",
+    "neon-glass",
+    "react",
+    "webawesome",
+    "typescript",
+    "pgvector",
+    "sentence-transformers"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "node scripts/build.mjs",
+    "build:check": "npm run typecheck && npm run build",
+    "test": "tsx --test tests/**/*.test.ts",
+    "dev": "npx --yes serve -l 5179 ."
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
