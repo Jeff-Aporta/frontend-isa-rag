@@ -9,8 +9,8 @@ function SourcesBlock({ sources }: { sources: SourceFragment[] }) {
   return (
     <details className="sources" open>
       <summary>
-        <iconify-icon icon="mdi:book-open-page-variant" width="16" height="16" /> Fuentes (
-        {sources.length} fragmentos)
+        <iconify-icon icon="mdi:book-open-page-variant" width="14" height="14" /> Fuentes (
+        {sources.length})
       </summary>
       {sources.map((s) => (
         <div className="fragment" key={`${s.index}-${s.source}`}>
@@ -163,202 +163,199 @@ export function App() {
   const indexed = docs.filter((d) => d.status === "indexed").length;
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">
-            <iconify-icon icon="mdi:file-search-outline" width="24" height="24" />
+    <>
+      <div className="ir-orbs" aria-hidden="true">
+        <div className="ir-orb ir-orb--cyan" />
+        <div className="ir-orb ir-orb--magenta" />
+        <div className="ir-orb ir-orb--blue" />
+      </div>
+      <div className="app-shell">
+        <aside className="sidebar">
+          <div className="brand">
+            <div className="brand-mark">
+              <iconify-icon icon="mdi:file-search-outline" width="18" height="18" />
+            </div>
+            <div>
+              <h1>ISA RAG</h1>
+              <p>Chat con tus docs</p>
+            </div>
           </div>
-          <div>
-            <h1>ISA RAG</h1>
-            <p>Tu IA conversa con TUS docs</p>
-          </div>
-        </div>
 
-        {healthOk ? (
-          <span className="status-ok">
-            <iconify-icon icon="mdi:check-circle" width="16" height="16" /> API lista
-          </span>
-        ) : (
-          <span className="err">API no disponible</span>
-        )}
+          {healthOk ? (
+            <span className="status-ok">
+              <iconify-icon icon="mdi:check-circle" width="14" height="14" /> API lista
+            </span>
+          ) : (
+            <span className="err">API no disponible</span>
+          )}
 
-        <div>
-          <p className="section-title">Espacios</p>
-          <div className="row" style={{ marginBottom: "0.5rem" }}>
-            <input
-              value={newSpaceName}
-              onChange={(e) => setNewSpaceName(e.target.value)}
-              placeholder="Nombre del space"
-              style={{
-                flex: 1,
-                minWidth: 0,
-                borderRadius: 10,
-                border: "1px solid var(--ir-line)",
-                background: "var(--ir-surface)",
-                color: "var(--ir-text)",
-                padding: "0.45rem 0.6rem",
-                font: "inherit",
-              }}
-              onKeyDown={(e) => e.key === "Enter" && createSpace()}
-            />
-            <button type="button" className="btn secondary" onClick={createSpace} disabled={busy}>
-              +
-            </button>
-          </div>
-          <div className="space-list">
-            {spaces.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className={`space-item${s.id === spaceId ? " active" : ""}`}
-                onClick={() => {
-                  setSpaceId(s.id);
-                  setMessages([]);
-                }}
-              >
-                <strong>{s.name}</strong>
-                <span>{s.docCount ?? 0} docs</span>
-              </button>
-            ))}
-            {!spaces.length && <p className="err">Crea un espacio para empezar</p>}
-          </div>
-        </div>
-
-        <div>
-          <p className="section-title">Documentos</p>
-          <div
-            className="file-drop"
-            onClick={() => fileRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.currentTarget.classList.add("drag");
-            }}
-            onDragLeave={(e) => e.currentTarget.classList.remove("drag")}
-            onDrop={(e) => {
-              e.preventDefault();
-              e.currentTarget.classList.remove("drag");
-              onFiles(e.dataTransfer.files);
-            }}
-          >
-            Arrastra PDF, MD, TXT, DOCX, CSV, HTML…
-            <br />
-            <small>o haz clic para elegir</small>
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            multiple
-            hidden
-            accept=".pdf,.txt,.md,.markdown,.csv,.html,.htm,.json,.docx"
-            onChange={(e) => onFiles(e.target.files)}
-          />
-          <ul className="doc-list" style={{ marginTop: "0.6rem" }}>
-            {docs.map((d) => (
-              <li key={d.id}>
-                <span>{d.filename}</span>
-                <span>{d.status}</span>
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            className="btn"
-            style={{ width: "100%", marginTop: "0.6rem", justifyContent: "center" }}
-            onClick={indexDocs}
-            disabled={!spaceId || !docs.length || indexing}
-          >
-            {indexing ? (
-              <>
-                <iconify-icon icon="svg-spinners:ring-resize" width="18" height="18" /> Indexando…
-              </>
-            ) : indexed ? (
-              <>
-                <iconify-icon icon="mdi:check" width="18" height="18" /> Reindexar
-              </>
-            ) : (
-              <>
-                <iconify-icon icon="mdi:database-import" width="18" height="18" /> Indexar documentos
-              </>
-            )}
-          </button>
-        </div>
-        {error && <p className="err">{error}</p>}
-      </aside>
-
-      <main className="main">
-        <header className="topbar">
-          <div>
-            <h2>{active?.name || "ISA RAG"}</h2>
-            <p className="caption">
-              React + Worker · LangChain · MiniLM local (R2) · Neon pgvector · neon-glass
-            </p>
-          </div>
-          <div className="actions">
-            <button type="button" className="btn ghost" onClick={toggleTheme} title="Tema">
-              <iconify-icon
-                icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
-                width="18"
-                height="18"
+          <div className="panel">
+            <p className="section-title">Espacios</p>
+            <div className="row" style={{ marginBottom: 6 }}>
+              <input
+                className="field"
+                value={newSpaceName}
+                onChange={(e) => setNewSpaceName(e.target.value)}
+                placeholder="Nuevo space…"
+                onKeyDown={(e) => e.key === "Enter" && createSpace()}
               />
-            </button>
+              <button type="button" className="btn secondary" onClick={createSpace} disabled={busy}>
+                +
+              </button>
+            </div>
+            <div className="space-list">
+              {spaces.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`space-item${s.id === spaceId ? " active" : ""}`}
+                  onClick={() => {
+                    setSpaceId(s.id);
+                    setMessages([]);
+                  }}
+                >
+                  <strong>{s.name}</strong>
+                  <span>{s.docCount ?? 0} docs</span>
+                </button>
+              ))}
+              {!spaces.length && <p className="err">Crea un espacio para empezar</p>}
+            </div>
+          </div>
+
+          <div className="panel panel--docs">
+            <p className="section-title">Documentos</p>
+            <div
+              className="file-drop"
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.add("drag");
+              }}
+              onDragLeave={(e) => e.currentTarget.classList.remove("drag")}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove("drag");
+                onFiles(e.dataTransfer.files);
+              }}
+            >
+              PDF · MD · TXT · DOCX · CSV · HTML
+              <br />
+              <small>clic o arrastra</small>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              hidden
+              accept=".pdf,.txt,.md,.markdown,.csv,.html,.htm,.json,.docx"
+              onChange={(e) => onFiles(e.target.files)}
+            />
+            <ul className="doc-list">
+              {docs.map((d) => (
+                <li key={d.id}>
+                  <span>{d.filename}</span>
+                  <span>{d.status}</span>
+                </li>
+              ))}
+            </ul>
             <button
               type="button"
-              className="btn ghost"
-              onClick={() => setMessages([])}
-              title="Reiniciar chat"
+              className="btn block"
+              onClick={indexDocs}
+              disabled={!spaceId || !docs.length || indexing}
             >
-              <iconify-icon icon="mdi:refresh" width="18" height="18" />
+              {indexing ? (
+                <>
+                  <iconify-icon icon="svg-spinners:ring-resize" width="14" height="14" /> Indexando…
+                </>
+              ) : indexed ? (
+                <>
+                  <iconify-icon icon="mdi:check" width="14" height="14" /> Reindexar
+                </>
+              ) : (
+                <>
+                  <iconify-icon icon="mdi:database-import" width="14" height="14" /> Indexar
+                </>
+              )}
             </button>
           </div>
-        </header>
+          {error && <p className="err">{error}</p>}
+        </aside>
 
-        <div className="chat" ref={chatRef}>
-          {!messages.length && (
-            <div className="empty">
-              <iconify-icon icon="mdi:chat-question-outline" width="48" height="48" />
-              <p>
-                {spaceId
-                  ? "Sube documentos, indexa, y pregunta. Las respuestas citan [Fragmento N]."
-                  : "Crea o elige un espacio en la barra lateral."}
-              </p>
+        <main className="main">
+          <header className="topbar">
+            <div>
+              <h2>{active?.name || "ISA RAG"}</h2>
+              <p className="caption">RAG · Neon pgvector · neon-glass</p>
             </div>
-          )}
-          {messages.map((m) => (
-            <div key={m.id} className={`msg ${m.role}`}>
-              {m.content}
-              {m.role === "assistant" && m.sources && <SourcesBlock sources={m.sources} />}
+            <div className="actions">
+              <button type="button" className="btn ghost" onClick={toggleTheme} title="Tema">
+                <iconify-icon
+                  icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
+                  width="16"
+                  height="16"
+                />
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => setMessages([])}
+                title="Reiniciar chat"
+              >
+                <iconify-icon icon="mdi:refresh" width="16" height="16" />
+              </button>
             </div>
-          ))}
-          {busy && messages.at(-1)?.role === "user" && (
-            <div className="msg assistant">
-              <iconify-icon icon="svg-spinners:ring-resize" width="20" height="20" /> Buscando en
-              tus documentos…
-            </div>
-          )}
-        </div>
+          </header>
 
-        <div className="composer">
-          <textarea
-            value={input}
-            placeholder={
-              spaceId ? "Pregúntame sobre tus documentos…" : "Selecciona un espacio primero…"
-            }
-            disabled={!spaceId || busy}
-            rows={2}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                ask();
-              }
-            }}
-          />
-          <button type="button" className="btn" onClick={ask} disabled={!spaceId || busy || !input.trim()}>
-            <iconify-icon icon="mdi:send" width="18" height="18" />
-          </button>
-        </div>
-      </main>
-    </div>
+          <div className="chat" ref={chatRef}>
+            {!messages.length && (
+              <div className="empty">
+                <iconify-icon icon="mdi:chat-question-outline" width="32" height="32" />
+                <p>
+                  {spaceId
+                    ? "Sube docs, indexa y pregunta. Citas [Fragmento N]."
+                    : "Crea o elige un espacio."}
+                </p>
+              </div>
+            )}
+            {messages.map((m) => (
+              <div key={m.id} className={`msg ${m.role}`}>
+                {m.content}
+                {m.role === "assistant" && m.sources && <SourcesBlock sources={m.sources} />}
+              </div>
+            ))}
+            {busy && messages.at(-1)?.role === "user" && (
+              <div className="msg assistant">
+                <iconify-icon icon="svg-spinners:ring-resize" width="16" height="16" /> Buscando…
+              </div>
+            )}
+          </div>
+
+          <div className="composer">
+            <textarea
+              value={input}
+              placeholder={spaceId ? "Pregunta sobre tus docs…" : "Elige un espacio…"}
+              disabled={!spaceId || busy}
+              rows={1}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  ask();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="btn"
+              onClick={ask}
+              disabled={!spaceId || busy || !input.trim()}
+            >
+              <iconify-icon icon="mdi:send" width="16" height="16" />
+            </button>
+          </div>
+        </main>
+      </div>
+    </>
   );
 }
