@@ -713,8 +713,51 @@ html.wa-dark .topbar {
 
 .actions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   align-items: center;
+}
+
+.btn-text {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ir-muted);
+  cursor: pointer;
+  transition: color 0.12s, transform 0.1s, filter 0.12s, background 0.12s;
+}
+
+.btn-text:hover:not(:disabled) {
+  color: var(--neon-cyan);
+  background: transparent;
+  filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.55));
+}
+
+.btn-text:active:not(:disabled) {
+  color: var(--neon-blue);
+  transform: scale(0.92);
+  filter: drop-shadow(0 0 6px rgba(30, 144, 255, 0.45));
+}
+
+.btn-text:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--neon-cyan) 55%, transparent);
+  outline-offset: 2px;
+}
+
+html.wa-light .btn-text:hover:not(:disabled) {
+  color: var(--neon-blue);
+  filter: none;
+}
+
+html.wa-light .btn-text:active:not(:disabled) {
+  color: #0b5db8;
+  filter: none;
 }
 
 .chat {

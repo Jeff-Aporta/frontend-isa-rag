@@ -428,25 +428,25 @@ export function App() {
             </div>
             <div className="actions">
               {mainView === "chunks" && (
-                <button type="button" className="btn ghost" onClick={backToChat} title="Volver al chat">
-                  <iconify-icon icon="mdi:chat-outline" width="16" height="16" />
+                <button type="button" className="btn-text" onClick={backToChat} title="Volver al chat">
+                  <iconify-icon icon="mdi:chat-outline" width="18" height="18" />
                 </button>
               )}
-              <button type="button" className="btn ghost" onClick={toggleTheme} title="Tema">
+              <button type="button" className="btn-text" onClick={toggleTheme} title="Tema">
                 <iconify-icon
                   icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
-                  width="16"
-                  height="16"
+                  width="18"
+                  height="18"
                 />
               </button>
               {mainView === "chat" && (
                 <button
                   type="button"
-                  className="btn ghost"
+                  className="btn-text"
                   onClick={() => setMessages([])}
                   title="Reiniciar chat"
                 >
-                  <iconify-icon icon="mdi:refresh" width="16" height="16" />
+                  <iconify-icon icon="mdi:refresh" width="18" height="18" />
                 </button>
               )}
             </div>
