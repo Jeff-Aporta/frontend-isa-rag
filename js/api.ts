@@ -5,6 +5,7 @@ import type {
   CreateSpaceRequest,
   HealthResponse,
   IndexJobResult,
+  RagChunk,
   RagDocument,
   Space,
 } from "../shared/types.ts";
@@ -54,6 +55,10 @@ export const api = {
     req<{ space: Space }>("/api/spaces", { method: "POST", body: JSON.stringify(body) }),
   listDocuments: (spaceId: string) =>
     req<{ documents: RagDocument[] }>(`/api/spaces/${encodeURIComponent(spaceId)}/documents`),
+  listChunks: (spaceId: string, docId: string) =>
+    req<{ document: { id: string; filename: string; spaceId: string }; chunks: RagChunk[] }>(
+      `/api/spaces/${encodeURIComponent(spaceId)}/documents/${encodeURIComponent(docId)}/chunks`,
+    ),
   upload: async (spaceId: string, files: FileList | File[]) => {
     const fd = new FormData();
     for (const f of Array.from(files)) fd.append("files", f);

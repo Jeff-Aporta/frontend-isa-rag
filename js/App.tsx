@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api.ts";
 import { useTheme } from "./theme.ts";
-import type { ChatMessage, RagDocument, SourceFragment, Space } from "../shared/types.ts";
+import type { ChatMessage, RagChunk, RagDocument, SourceFragment, Space } from "../shared/types.ts";
 import { isSupportedFilename, newId } from "../shared/index.ts";
+
+type MainView = "chat" | "chunks";
 
 function SourcesBlock({ sources }: { sources: SourceFragment[] }) {
   if (!sources.length) return null;
@@ -36,9 +38,40 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [healthOk, setHealthOk] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
+  const [mainView, setMainView] = useState<MainView>("chat");
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [chunks, setChunks] = useState<RagChunk[]>([]);
+  const [chunksBusy, setChunksBusy] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
 
   const active = spaces.find((s) => s.id === spaceId) || null;
+  const selectedDoc = docs.find((d) => d.id === selectedDocId) || null;
+
+  const openChunks = useCallback(
+    async (doc: RagDocument) => {
+      if (!spaceId) return;
+      setSelectedDocId(doc.id);
+      setMainView("chunks");
+      setChunksBusy(true);
+      setError(null);
+      try {
+        const res = await api.listChunks(spaceId, doc.id);
+        setChunks(res.chunks);
+      } catch (e) {
+        setChunks([]);
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setChunksBusy(false);
+      }
+    },
+    [spaceId],
+  );
+
+  const backToChat = useCallback(() => {
+    setMainView("chat");
+    setSelectedDocId(null);
+    setChunks([]);
+  }, []);
 
   const refreshSpaces = useCallback(async () => {
     const { spaces: list } = await api.listSpaces();
@@ -67,10 +100,11 @@ export function App() {
   useEffect(() => {
     if (!spaceId) {
       setDocs([]);
+      backToChat();
       return;
     }
     refreshDocs(spaceId).catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, [spaceId, refreshDocs]);
+  }, [spaceId, refreshDocs, backToChat]);
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
@@ -211,6 +245,7 @@ export function App() {
                   onClick={() => {
                     setSpaceId(s.id);
                     setMessages([]);
+                    backToChat();
                   }}
                 >
                   <strong>{s.name}</strong>
@@ -253,7 +288,12 @@ export function App() {
             </label>
             <ul className="doc-list">
               {docs.map((d) => (
-                <li key={d.id}>
+                <li
+                  key={d.id}
+                  className={selectedDocId === d.id && mainView === "chunks" ? "active" : undefined}
+                  onClick={() => openChunks(d)}
+                  title="Ver chunks indexados"
+                >
                   <span>{d.filename}</span>
                   <span>{d.status}</span>
                 </li>
@@ -286,10 +326,23 @@ export function App() {
         <main className="main">
           <header className="topbar">
             <div>
-              <h2>{active?.name || "ISA RAG"}</h2>
-              <p className="caption">RAG · Neon pgvector · neon-glass</p>
+              <h2>
+                {mainView === "chunks" && selectedDoc
+                  ? selectedDoc.filename
+                  : active?.name || "ISA RAG"}
+              </h2>
+              <p className="caption">
+                {mainView === "chunks"
+                  ? `${chunks.length} chunks · vista de fragmentos`
+                  : "RAG · Neon pgvector · neon-glass"}
+              </p>
             </div>
             <div className="actions">
+              {mainView === "chunks" && (
+                <button type="button" className="btn ghost" onClick={backToChat} title="Volver al chat">
+                  <iconify-icon icon="mdi:chat-outline" width="16" height="16" />
+                </button>
+              )}
               <button type="button" className="btn ghost" onClick={toggleTheme} title="Tema">
                 <iconify-icon
                   icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
@@ -297,64 +350,100 @@ export function App() {
                   height="16"
                 />
               </button>
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => setMessages([])}
-                title="Reiniciar chat"
-              >
-                <iconify-icon icon="mdi:refresh" width="16" height="16" />
-              </button>
+              {mainView === "chat" && (
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setMessages([])}
+                  title="Reiniciar chat"
+                >
+                  <iconify-icon icon="mdi:refresh" width="16" height="16" />
+                </button>
+              )}
             </div>
           </header>
 
-          <div className="chat" ref={chatRef}>
-            {!messages.length && (
-              <div className="empty">
-                <iconify-icon icon="mdi:chat-question-outline" width="32" height="32" />
-                <p>
-                  {spaceId
-                    ? "Sube docs, indexa y pregunta. Citas [Fragmento N]."
-                    : "Crea o elige un espacio."}
-                </p>
+          {mainView === "chunks" ? (
+            <div className="chunks-view">
+              {chunksBusy && (
+                <div className="chunks-empty">
+                  <iconify-icon icon="svg-spinners:ring-resize" width="28" height="28" />
+                  <p>Cargando chunks…</p>
+                </div>
+              )}
+              {!chunksBusy && !chunks.length && (
+                <div className="chunks-empty">
+                  <iconify-icon icon="mdi:file-document-outline" width="28" height="28" />
+                  <p>
+                    {selectedDoc?.status === "indexed"
+                      ? "Sin chunks (reindexa el space)."
+                      : "Documento aún no indexado. Pulsa Indexar."}
+                  </p>
+                </div>
+              )}
+              {!chunksBusy &&
+                chunks.map((c) => (
+                  <article className="chunk-card" key={c.id}>
+                    <div className="chunk-card__meta">
+                      <span className="pill">#{c.chunkIndex}</span>
+                      <span className="pill">pág. {c.page ?? "?"}</span>
+                      <span>{c.source}</span>
+                    </div>
+                    <p className="chunk-card__body">{c.content}</p>
+                  </article>
+                ))}
+            </div>
+          ) : (
+            <>
+              <div className="chat" ref={chatRef}>
+                {!messages.length && (
+                  <div className="empty">
+                    <iconify-icon icon="mdi:chat-question-outline" width="32" height="32" />
+                    <p>
+                      {spaceId
+                        ? "Sube docs, indexa y pregunta. Clic en un archivo para ver chunks."
+                        : "Crea o elige un espacio."}
+                    </p>
+                  </div>
+                )}
+                {messages.map((m) => (
+                  <div key={m.id} className={`msg ${m.role}`}>
+                    {m.content}
+                    {m.role === "assistant" && m.sources && <SourcesBlock sources={m.sources} />}
+                  </div>
+                ))}
+                {busy && messages.at(-1)?.role === "user" && (
+                  <div className="msg assistant">
+                    <iconify-icon icon="svg-spinners:ring-resize" width="16" height="16" /> Buscando…
+                  </div>
+                )}
               </div>
-            )}
-            {messages.map((m) => (
-              <div key={m.id} className={`msg ${m.role}`}>
-                {m.content}
-                {m.role === "assistant" && m.sources && <SourcesBlock sources={m.sources} />}
-              </div>
-            ))}
-            {busy && messages.at(-1)?.role === "user" && (
-              <div className="msg assistant">
-                <iconify-icon icon="svg-spinners:ring-resize" width="16" height="16" /> Buscando…
-              </div>
-            )}
-          </div>
 
-          <div className="composer">
-            <textarea
-              value={input}
-              placeholder={spaceId ? "Pregunta sobre tus docs…" : "Elige un espacio…"}
-              disabled={!spaceId || busy}
-              rows={1}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  ask();
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="btn"
-              onClick={ask}
-              disabled={!spaceId || busy || !input.trim()}
-            >
-              <iconify-icon icon="mdi:send" width="16" height="16" />
-            </button>
-          </div>
+              <div className="composer">
+                <textarea
+                  value={input}
+                  placeholder={spaceId ? "Pregunta sobre tus docs…" : "Elige un espacio…"}
+                  disabled={!spaceId || busy}
+                  rows={1}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      ask();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={ask}
+                  disabled={!spaceId || busy || !input.trim()}
+                >
+                  <iconify-icon icon="mdi:send" width="16" height="16" />
+                </button>
+              </div>
+            </>
+          )}
         </main>
       </div>
     </>

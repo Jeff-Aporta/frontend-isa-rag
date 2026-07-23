@@ -35,6 +35,17 @@ export interface RagDocument {
   createdAt: string;
 }
 
+/** Chunk indexado (vista de inspección, sin embedding). */
+export interface RagChunk {
+  id: string;
+  documentId: string;
+  spaceId: string;
+  content: string;
+  page: number | null;
+  chunkIndex: number;
+  source: string;
+}
+
 export interface SourceFragment {
   index: number;
   source: string;
