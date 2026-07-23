@@ -1,10 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, clearSession, getStoredUser, getToken, setSession, ApiError } from "./api.ts";
 import { useTheme } from "./theme.ts";
 import type { ChatMessage, RagChunk, RagDocument, SourceFragment, Space } from "../shared/types.ts";
 import { isSupportedFilename, newId, suggestionsForSpaceName } from "../shared/index.ts";
 
-type MainView = "chat" | "chunks";
+type MainView = "home" | "chat" | "chunks";
+
+interface ResourceTemplate {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+}
+
+const RESOURCE_TEMPLATES: ResourceTemplate[] = [
+  { id: "quiz", title: "Cuestionario", description: "Genera preguntas sobre tus documentos", icon: "mdi:help-circle-outline" },
+  { id: "podcast", title: "Podcast", description: "Conversación de audio entre dos IA", icon: "mdi:microphone-outline" },
+  { id: "summary", title: "Resumen", description: "Síntesis ejecutiva del contenido", icon: "mdi:text-short" },
+  { id: "mindmap", title: "Mapa mental", description: "Ideas clave conectadas visualmente", icon: "mdi:graph-outline" },
+  { id: "briefing", title: "Informe", description: "Documento estructurado en Markdown", icon: "mdi:file-document-outline" },
+  { id: "flashcards", title: "Tarjetas", description: "Repaso rápido pregunta/respuesta", icon: "mdi:card-outline" },
+];
 
 function SourcesBlock({ sources }: { sources: SourceFragment[] }) {
   if (!sources.length) return null;
@@ -56,7 +72,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [healthOk, setHealthOk] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
-  const [mainView, setMainView] = useState<MainView>("chat");
+  const [mainView, setMainView] = useState<MainView>("home");
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [chunks, setChunks] = useState<RagChunk[]>([]);
   const [chunksBusy, setChunksBusy] = useState(false);
@@ -104,6 +120,18 @@ export function App() {
     setChunks([]);
   }, []);
 
+  const goHome = useCallback(() => {
+    setMainView("home");
+    setSelectedDocId(null);
+    setChunks([]);
+  }, []);
+
+  const openSpace = useCallback((id: string) => {
+    setSpaceId(id);
+    setMessages([]);
+    setMainView("chat");
+  }, []);
+
   function openEditSpace(s: Space) {
     setEditSpaceId(s.id);
     setEditName(s.name);
@@ -144,7 +172,7 @@ export function App() {
       if (spaceId === s.id) {
         setSpaceId(null);
         setMessages([]);
-        backToChat();
+        setMainView("home");
       }
       await refreshSpaces();
     } catch (e) {
@@ -157,8 +185,7 @@ export function App() {
   const refreshSpaces = useCallback(async () => {
     const { spaces: list } = await api.listSpaces();
     setSpaces(list);
-    if (!spaceId && list[0]) setSpaceId(list[0].id);
-  }, [spaceId]);
+  }, []);
 
   const refreshDocs = useCallback(async (id: string) => {
     const { documents } = await api.listDocuments(id);
@@ -215,7 +242,7 @@ export function App() {
     setDocs([]);
     setMessages([]);
     setSpaceId(null);
-    backToChat();
+    setMainView("home");
   }
 
   function needAuth(e: unknown): boolean {
@@ -224,10 +251,7 @@ export function App() {
 
   useEffect(() => {
     if (!spaceId || !authed) {
-      if (!spaceId) {
-        setDocs([]);
-        backToChat();
-      }
+      if (!spaceId) setDocs([]);
       return;
     }
     refreshDocs(spaceId).catch((e) => {
@@ -237,7 +261,7 @@ export function App() {
       }
       setError(e instanceof Error ? e.message : String(e));
     });
-  }, [spaceId, refreshDocs, backToChat, authed]);
+  }, [spaceId, refreshDocs, authed]);
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
@@ -251,8 +275,7 @@ export function App() {
       const { space } = await api.createSpace({ name });
       setNewSpaceName("");
       await refreshSpaces();
-      setSpaceId(space.id);
-      setMessages([]);
+      openSpace(space.id);
     } catch (e) {
       if (needAuth(e)) {
         setAuthed(false);
@@ -392,20 +415,14 @@ export function App() {
               {spaces.map((s) => (
                 <div
                   key={s.id}
-                  className={`space-item${s.id === spaceId ? " active" : ""}`}
+                  className={`space-item${s.id === spaceId && mainView !== "home" ? " active" : ""}`}
                   role="button"
                   tabIndex={0}
-                  onClick={() => {
-                    setSpaceId(s.id);
-                    setMessages([]);
-                    backToChat();
-                  }}
+                  onClick={() => openSpace(s.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      setSpaceId(s.id);
-                      setMessages([]);
-                      backToChat();
+                      openSpace(s.id);
                     }
                   }}
                 >
@@ -523,146 +540,258 @@ export function App() {
         </aside>
 
         <main className="main">
-          <header className="topbar">
-            <div>
-              <h2
-                className={mainView === "chat" && active ? "topbar-title--editable" : undefined}
-                title={mainView === "chat" && active ? "Doble clic para editar espacio" : undefined}
-                onDoubleClick={() => {
-                  if (mainView === "chat" && active) openEditSpace(active);
-                }}
-              >
-                {mainView === "chunks" && selectedDoc
-                  ? selectedDoc.filename
-                  : active?.name || "ISA RAG"}
-              </h2>
-              <p className="caption">
-                {mainView === "chunks"
-                  ? `${chunks.length} chunks · vista de fragmentos`
-                  : active?.description || "RAG · Neon pgvector · neon-glass"}
-              </p>
-            </div>
-            <div className="actions">
-              {mainView === "chunks" && (
-                <button type="button" className="btn-text" onClick={backToChat} title="Volver al chat">
-                  <iconify-icon icon="mdi:chat-outline" width="18" height="18" />
-                </button>
-              )}
-              <button type="button" className="btn-text" onClick={toggleTheme} title="Tema">
-                <iconify-icon
-                  icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
-                  width="18"
-                  height="18"
-                />
-              </button>
-              {mainView === "chat" && (
-                <button
-                  type="button"
-                  className="btn-text"
-                  onClick={() => setMessages([])}
-                  title="Reiniciar chat"
-                >
-                  <iconify-icon icon="mdi:refresh" width="18" height="18" />
-                </button>
-              )}
-            </div>
-          </header>
+          {mainView === "home" ? (
+            <>
+              <header className="topbar">
+                <div>
+                  <h2>ISA RAG</h2>
+                  <p className="caption">Tus espacios de conocimiento · {spaces.length} en total</p>
+                </div>
+                <div className="actions">
+                  <button type="button" className="btn-text" onClick={toggleTheme} title="Tema">
+                    <iconify-icon
+                      icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
+                      width="18"
+                      height="18"
+                    />
+                  </button>
+                </div>
+              </header>
 
-          {mainView === "chunks" ? (
-            <div className="chunks-view">
-              {chunksBusy && (
-                <div className="chunks-empty">
-                  <iconify-icon icon="svg-spinners:ring-resize" width="28" height="28" />
-                  <p>Cargando chunks…</p>
-                </div>
-              )}
-              {!chunksBusy && !chunks.length && (
-                <div className="chunks-empty">
-                  <iconify-icon icon="mdi:file-document-outline" width="28" height="28" />
-                  <p>
-                    {selectedDoc?.status === "indexed"
-                      ? "Sin chunks (reindexa el space)."
-                      : "Documento aún no indexado. Pulsa Indexar."}
-                  </p>
-                </div>
-              )}
-              {!chunksBusy &&
-                chunks.map((c) => (
-                  <article className="chunk-card" key={c.id}>
-                    <div className="chunk-card__meta">
-                      <span className="pill">#{c.chunkIndex}</span>
-                      <span className="pill">pág. {c.page ?? "?"}</span>
-                      <span>{c.source}</span>
+              <div className="home">
+                <section className="home__main">
+                  <h3 className="home__heading">
+                    <iconify-icon icon="mdi:notebook-outline" width="20" height="20" />
+                    Espacios
+                  </h3>
+                  {!spaces.length ? (
+                    <div className="home__empty">
+                      <iconify-icon icon="mdi:notebook-plus-outline" width="40" height="40" />
+                      <p>Crea tu primer espacio desde el panel izquierdo para empezar.</p>
                     </div>
-                    <p className="chunk-card__body">{c.content}</p>
-                  </article>
-                ))}
-            </div>
+                  ) : (
+                    <div className="home__grid">
+                      {spaces.map((s) => (
+                        <article
+                          key={s.id}
+                          className="space-card"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openSpace(s.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openSpace(s.id);
+                            }
+                          }}
+                        >
+                          <div className="space-card__cover" aria-hidden="true">
+                            <iconify-icon icon="mdi:file-search-outline" width="28" height="28" />
+                          </div>
+                          <div className="space-card__body">
+                            <h4>{s.name}</h4>
+                            <p className="space-card__desc">
+                              {s.description || "Sin descripción"}
+                            </p>
+                          </div>
+                          <div className="space-card__meta">
+                            <span className="pill">{s.docCount ?? 0} docs</span>
+                            <span className="pill pill--ghost">abrir →</span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                <aside className="home__aside" aria-label="Crear recurso">
+                  <h3 className="home__heading">
+                    <iconify-icon icon="mdi:auto-fix" width="20" height="20" />
+                    Crear recurso
+                  </h3>
+                  <p className="home__aside-hint">
+                    Elige un espacio activo para generar contenido a partir de tus documentos.
+                  </p>
+                  <div className="resource-list">
+                    {RESOURCE_TEMPLATES.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className="resource-btn"
+                        disabled={!active}
+                        title={active ? t.description : "Selecciona un espacio primero"}
+                      >
+                        <span className="resource-btn__icon" aria-hidden="true">
+                          <iconify-icon icon={t.icon} width="18" height="18" />
+                        </span>
+                        <span className="resource-btn__body">
+                          <strong>{t.title}</strong>
+                          <span className="resource-btn__desc">{t.description}</span>
+                        </span>
+                        <iconify-icon
+                          icon={active ? "mdi:plus-circle-outline" : "mdi:lock-outline"}
+                          width="16"
+                          height="16"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </aside>
+              </div>
+            </>
           ) : (
             <>
-              <div className="chat" ref={chatRef}>
-                {!messages.length && (
-                  <div className="empty">
-                    <iconify-icon icon="mdi:chat-question-outline" width="32" height="32" />
-                    <p>
-                      {spaceId
-                        ? "Sube docs, indexa y pregunta. Clic en un archivo para ver chunks."
-                        : "Crea o elige un espacio."}
-                    </p>
-                  </div>
-                )}
-                {messages.map((m) => (
-                  <div key={m.id} className={`msg ${m.role}`}>
-                    {m.content}
-                    {m.role === "assistant" && m.sources && <SourcesBlock sources={m.sources} />}
-                  </div>
-                ))}
-                {busy && messages.at(-1)?.role === "user" && (
-                  <div className="msg assistant">
-                    <iconify-icon icon="svg-spinners:ring-resize" width="16" height="16" /> Buscando…
-                  </div>
-                )}
-              </div>
-
-              <div className="suggestions" aria-label="Preguntas sugeridas">
-                {suggestionsForSpaceName(active?.name).map((q) => (
+              <header className="topbar">
+                <div>
                   <button
-                    key={q}
                     type="button"
-                    className="suggestion-pill"
-                    onClick={() => setInput(q)}
-                    disabled={!spaceId || busy}
-                    title={q}
+                    className="btn-text btn-text--back"
+                    onClick={goHome}
+                    title="Todos los espacios"
+                    aria-label="Volver a todos los espacios"
                   >
-                    <iconify-icon icon="mdi:lightbulb-on-outline" width="14" height="14" />
-                    <span>{q}</span>
+                    <iconify-icon icon="mdi:arrow-left" width="18" height="18" />
                   </button>
-                ))}
-              </div>
+                  <h2
+                    className={mainView === "chat" && active ? "topbar-title--editable" : undefined}
+                    title={mainView === "chat" && active ? "Doble clic para editar espacio" : undefined}
+                    onDoubleClick={() => {
+                      if (mainView === "chat" && active) openEditSpace(active);
+                    }}
+                  >
+                    {mainView === "chunks" && selectedDoc
+                      ? selectedDoc.filename
+                      : active?.name || "ISA RAG"}
+                  </h2>
+                  <p className="caption">
+                    {mainView === "chunks"
+                      ? `${chunks.length} chunks · vista de fragmentos`
+                      : active?.description || "RAG · Neon pgvector · neon-glass"}
+                  </p>
+                </div>
+                <div className="actions">
+                  {mainView === "chunks" && (
+                    <button type="button" className="btn-text" onClick={backToChat} title="Volver al chat">
+                      <iconify-icon icon="mdi:chat-outline" width="18" height="18" />
+                    </button>
+                  )}
+                  <button type="button" className="btn-text" onClick={toggleTheme} title="Tema">
+                    <iconify-icon
+                      icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
+                      width="18"
+                      height="18"
+                    />
+                  </button>
+                  {mainView === "chat" && (
+                    <button
+                      type="button"
+                      className="btn-text"
+                      onClick={() => setMessages([])}
+                      title="Reiniciar chat"
+                    >
+                      <iconify-icon icon="mdi:refresh" width="18" height="18" />
+                    </button>
+                  )}
+                </div>
+              </header>
 
-              <div className="composer">
-                <textarea
-                  value={input}
-                  placeholder={spaceId ? "Pregunta sobre tus docs…" : "Elige un espacio…"}
-                  disabled={!spaceId || busy}
-                  rows={1}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      ask();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={ask}
-                  disabled={!spaceId || busy || !input.trim()}
-                >
-                  <iconify-icon icon="mdi:send" width="16" height="16" />
-                </button>
-              </div>
+              {mainView === "chunks" ? (
+                <div className="chunks-view">
+                  {chunksBusy && (
+                    <div className="chunks-empty">
+                      <iconify-icon icon="svg-spinners:ring-resize" width="28" height="28" />
+                      <p>Cargando chunks…</p>
+                    </div>
+                  )}
+                  {!chunksBusy && !chunks.length && (
+                    <div className="chunks-empty">
+                      <iconify-icon icon="mdi:file-document-outline" width="28" height="28" />
+                      <p>
+                        {selectedDoc?.status === "indexed"
+                          ? "Sin chunks (reindexa el space)."
+                          : "Documento aún no indexado. Pulsa Indexar."}
+                      </p>
+                    </div>
+                  )}
+                  {!chunksBusy &&
+                    chunks.map((c) => (
+                      <article className="chunk-card" key={c.id}>
+                        <div className="chunk-card__meta">
+                          <span className="pill">#{c.chunkIndex}</span>
+                          <span className="pill">pág. {c.page ?? "?"}</span>
+                          <span>{c.source}</span>
+                        </div>
+                        <p className="chunk-card__body">{c.content}</p>
+                      </article>
+                    ))}
+                </div>
+              ) : (
+                <>
+                  <div className="chat" ref={chatRef}>
+                    {!messages.length && (
+                      <div className="empty">
+                        <iconify-icon icon="mdi:chat-question-outline" width="32" height="32" />
+                        <p>
+                          {spaceId
+                            ? "Sube docs, indexa y pregunta. Clic en un archivo para ver chunks."
+                            : "Crea o elige un espacio."}
+                        </p>
+                      </div>
+                    )}
+                    {messages.map((m) => (
+                      <div key={m.id} className={`msg ${m.role}`}>
+                        {m.content}
+                        {m.role === "assistant" && m.sources && <SourcesBlock sources={m.sources} />}
+                      </div>
+                    ))}
+                    {busy && messages.at(-1)?.role === "user" && (
+                      <div className="msg assistant">
+                        <iconify-icon icon="svg-spinners:ring-resize" width="16" height="16" /> Buscando…
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="suggestions" aria-label="Preguntas sugeridas">
+                    {suggestionsForSpaceName(active?.name).map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        className="suggestion-pill"
+                        onClick={() => setInput(q)}
+                        disabled={!spaceId || busy}
+                        title={q}
+                      >
+                        <iconify-icon icon="mdi:lightbulb-on-outline" width="14" height="14" />
+                        <span>{q}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="composer">
+                    <textarea
+                      value={input}
+                      placeholder={spaceId ? "Pregunta sobre tus docs…" : "Elige un espacio…"}
+                      disabled={!spaceId || busy}
+                      rows={1}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          ask();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={ask}
+                      disabled={!spaceId || busy || !input.trim()}
+                    >
+                      <iconify-icon icon="mdi:send" width="16" height="16" />
+                    </button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </main>
