@@ -262,19 +262,22 @@ export function App() {
             <div className="brand-mark">
               <iconify-icon icon="mdi:file-search-outline" width="18" height="18" />
             </div>
-            <div>
+            <div className="brand__text">
               <h1>ISA RAG</h1>
               <p>Chat con tus docs</p>
             </div>
-          </div>
-
-          {healthOk ? (
-            <span className="status-ok">
-              <iconify-icon icon="mdi:check-circle" width="14" height="14" /> API lista
+            <span
+              className={`brand-status${healthOk ? " brand-status--ok" : " brand-status--err"}`}
+              title={healthOk ? "API lista" : "API no disponible"}
+              aria-label={healthOk ? "API lista" : "API no disponible"}
+            >
+              <iconify-icon
+                icon={healthOk ? "mdi:check-circle" : "mdi:alert-circle"}
+                width="16"
+                height="16"
+              />
             </span>
-          ) : (
-            <span className="err">API no disponible</span>
-          )}
+          </div>
 
           <div className="panel">
             <p className="section-title">Espacios</p>
