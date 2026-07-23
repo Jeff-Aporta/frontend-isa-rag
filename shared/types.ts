@@ -81,6 +81,11 @@ export interface CreateSpaceRequest {
   description?: string;
 }
 
+export interface UpdateSpaceRequest {
+  name?: string;
+  description?: string | null;
+}
+
 export interface IndexJobResult {
   spaceId: string;
   documents: number;

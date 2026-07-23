@@ -42,6 +42,10 @@ export function App() {
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [chunks, setChunks] = useState<RagChunk[]>([]);
   const [chunksBusy, setChunksBusy] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSpaceId, setEditSpaceId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
 
   const active = spaces.find((s) => s.id === spaceId) || null;
@@ -72,6 +76,56 @@ export function App() {
     setSelectedDocId(null);
     setChunks([]);
   }, []);
+
+  function openEditSpace(s: Space) {
+    setEditSpaceId(s.id);
+    setEditName(s.name);
+    setEditDesc(s.description || "");
+    setEditOpen(true);
+  }
+
+  async function saveSpaceEdit() {
+    if (!editSpaceId) return;
+    const name = editName.trim();
+    if (!name) {
+      setError("El nombre del espacio es obligatorio");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await api.updateSpace(editSpaceId, {
+        name,
+        description: editDesc.trim() || null,
+      });
+      setEditOpen(false);
+      setEditSpaceId(null);
+      await refreshSpaces();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeSpace(s: Space) {
+    if (!confirm(`¿Eliminar el espacio «${s.name}» y todos sus documentos?`)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.deleteSpace(s.id);
+      if (spaceId === s.id) {
+        setSpaceId(null);
+        setMessages([]);
+        backToChat();
+      }
+      await refreshSpaces();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const refreshSpaces = useCallback(async () => {
     const { spaces: list } = await api.listSpaces();
@@ -238,19 +292,48 @@ export function App() {
             </div>
             <div className="space-list">
               {spaces.map((s) => (
-                <button
+                <div
                   key={s.id}
-                  type="button"
                   className={`space-item${s.id === spaceId ? " active" : ""}`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     setSpaceId(s.id);
                     setMessages([]);
                     backToChat();
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSpaceId(s.id);
+                      setMessages([]);
+                      backToChat();
+                    }
+                  }}
                 >
-                  <strong>{s.name}</strong>
-                  <span>{s.docCount ?? 0} docs</span>
-                </button>
+                  <div className="space-item__body">
+                    <strong>{s.name}</strong>
+                    <span>{s.docCount ?? 0} docs</span>
+                  </div>
+                  <div className="space-item__actions" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      title="Editar espacio"
+                      onClick={() => openEditSpace(s)}
+                    >
+                      <iconify-icon icon="mdi:pencil-outline" width="14" height="14" />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn--danger"
+                      title="Eliminar espacio"
+                      onClick={() => removeSpace(s)}
+                    >
+                      <iconify-icon icon="mdi:trash-can-outline" width="14" height="14" />
+                    </button>
+                  </div>
+                </div>
               ))}
               {!spaces.length && <p className="err">Crea un espacio para empezar</p>}
             </div>
@@ -326,7 +409,13 @@ export function App() {
         <main className="main">
           <header className="topbar">
             <div>
-              <h2>
+              <h2
+                className={mainView === "chat" && active ? "topbar-title--editable" : undefined}
+                title={mainView === "chat" && active ? "Doble clic para editar espacio" : undefined}
+                onDoubleClick={() => {
+                  if (mainView === "chat" && active) openEditSpace(active);
+                }}
+              >
                 {mainView === "chunks" && selectedDoc
                   ? selectedDoc.filename
                   : active?.name || "ISA RAG"}
@@ -334,7 +423,7 @@ export function App() {
               <p className="caption">
                 {mainView === "chunks"
                   ? `${chunks.length} chunks · vista de fragmentos`
-                  : "RAG · Neon pgvector · neon-glass"}
+                  : active?.description || "RAG · Neon pgvector · neon-glass"}
               </p>
             </div>
             <div className="actions">
@@ -446,6 +535,48 @@ export function App() {
           )}
         </main>
       </div>
+
+      {editOpen && (
+        <div className="modal-backdrop" role="presentation" onClick={() => setEditOpen(false)}>
+          <div
+            className="modal glass-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-space-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="edit-space-title">Editar espacio</h3>
+            <label className="modal-field">
+              <span>Nombre</span>
+              <input
+                className="field"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && saveSpaceEdit()}
+              />
+            </label>
+            <label className="modal-field">
+              <span>Descripción</span>
+              <textarea
+                className="field field--area"
+                rows={3}
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                placeholder="Opcional…"
+              />
+            </label>
+            <div className="modal-actions">
+              <button type="button" className="btn ghost" onClick={() => setEditOpen(false)}>
+                Cancelar
+              </button>
+              <button type="button" className="btn" onClick={saveSpaceEdit} disabled={busy}>
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

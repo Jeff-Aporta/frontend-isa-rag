@@ -8,6 +8,7 @@ import type {
   RagChunk,
   RagDocument,
   Space,
+  UpdateSpaceRequest,
 } from "../shared/types.ts";
 
 const DEFAULT_API =
@@ -53,6 +54,15 @@ export const api = {
   listSpaces: () => req<{ spaces: Space[] }>("/api/spaces"),
   createSpace: (body: CreateSpaceRequest) =>
     req<{ space: Space }>("/api/spaces", { method: "POST", body: JSON.stringify(body) }),
+  updateSpace: (spaceId: string, body: UpdateSpaceRequest) =>
+    req<{ space: Space }>(`/api/spaces/${encodeURIComponent(spaceId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteSpace: (spaceId: string) =>
+    req<{ ok: boolean; id: string }>(`/api/spaces/${encodeURIComponent(spaceId)}`, {
+      method: "DELETE",
+    }),
   listDocuments: (spaceId: string) =>
     req<{ documents: RagDocument[] }>(`/api/spaces/${encodeURIComponent(spaceId)}/documents`),
   listChunks: (spaceId: string, docId: string) =>
