@@ -259,6 +259,10 @@ export function App() {
       await api.upload(spaceId, files);
       await refreshDocs(spaceId);
     } catch (e) {
+      if (needAuth(e)) {
+        setAuthed(false);
+        setLoginOpen(true);
+      }
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
@@ -276,6 +280,10 @@ export function App() {
       setError(null);
       alert(`${r.documents} docs · ${r.chunks} chunks indexados`);
     } catch (e) {
+      if (needAuth(e)) {
+        setAuthed(false);
+        setLoginOpen(true);
+      }
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setIndexing(false);
@@ -306,6 +314,10 @@ export function App() {
       };
       setMessages((m) => [...m, asst]);
     } catch (e) {
+      if (needAuth(e)) {
+        setAuthed(false);
+        setLoginOpen(true);
+      }
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
