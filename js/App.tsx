@@ -92,11 +92,26 @@ export function App() {
 const [authUser, setAuthUser] = useState<string | null>(() => getStoredUser());
 const [loginOpen, setLoginOpen] = useState(false);
 const [loginUser, setLoginUser] = useState("admn");
-const [statsBySpace, setStatsBySpace] = useState<Record<string, SpaceStats>>({});
-const [resourceMatch, setResourceMatch] = useState<ResourceMatch[] | null>(null);
-const [matching, setMatching] = useState(false);
+  const [statsBySpace, setStatsBySpace] = useState<Record<string, SpaceStats>>({});
+  const [resourceMatch, setResourceMatch] = useState<ResourceMatch[] | null>(null);
+  const [matching, setMatching] = useState(false);
   const [loginPass, setLoginPass] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
+
+  // —— Layout: anchos persistentes + drawers laterales ——
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => Number(localStorage.getItem("isa-rag:layout:sidebar") || 248));
+  const [asideWidth, setAsideWidth] = useState<number>(() => Number(localStorage.getItem("isa-rag:layout:aside") || 320));
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => localStorage.getItem("isa-rag:layout:sidebarOpen") !== "0");
+  const [asideOpen, setAsideOpen] = useState<boolean>(() => localStorage.getItem("isa-rag:layout:asideOpen") !== "0");
+
+  useEffect(() => {
+    localStorage.setItem("isa-rag:layout:sidebar", String(sidebarWidth));
+    localStorage.setItem("isa-rag:layout:aside", String(asideWidth));
+  }, [sidebarWidth, asideWidth]);
+  useEffect(() => {
+    localStorage.setItem("isa-rag:layout:sidebarOpen", sidebarOpen ? "1" : "0");
+    localStorage.setItem("isa-rag:layout:asideOpen", asideOpen ? "1" : "0");
+  }, [sidebarOpen, asideOpen]);
 
   const active = spaces.find((s) => s.id === spaceId) || null;
   const selectedDoc = docs.find((d) => d.id === selectedDocId) || null;
@@ -158,11 +173,44 @@ const [matching, setMatching] = useState(false);
     }
   }, [spaceId, input, messages]);
 
+  // —— Splitters (drag-to-resize) ——
+  function startDrag(
+    side: "sidebar" | "aside",
+    e: React.PointerEvent<HTMLDivElement>,
+  ): void {
+    const startX = e.clientX;
+    const startW = side === "sidebar" ? sidebarWidth : asideWidth;
+    const minW = 180;
+    const maxW = Math.max(minW + 40, Math.min(520, window.innerWidth - 360));
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const next = Math.max(minW, Math.min(maxW, startW + (side === "sidebar" ? dx : -dx)));
+      if (side === "sidebar") setSidebarWidth(next);
+      else setAsideWidth(next);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.removeProperty("cursor");
+      document.body.style.removeProperty("user-select");
+    };
+    e.preventDefault();
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
   const openSpace = useCallback((id: string) => {
     setSpaceId(id);
     setMessages([]);
     setMainView("chat");
     setResourceMatch(null);
+    setAsideOpen(true);
   }, []);
 
   function openEditSpace(s: Space) {
@@ -436,14 +484,30 @@ const [matching, setMatching] = useState(false);
         <div className="ir-orb ir-orb--blue" />
       </div>
       <div className="app-shell">
-        <aside className="sidebar">
-          <div className="brand">
-            <div className="brand-mark">
-              <iconify-icon icon="mdi:file-search-outline" width="18" height="18" />
-            </div>
-            <div className="brand__text">
-              <h1>ISA RAG</h1>
-              <p>Chat con tus docs</p>
+        <header className="app-header">
+          <div className="app-header__left">
+            <button
+              type="button"
+              className="app-header__toggle"
+              aria-label={sidebarOpen ? "Ocultar panel izquierdo" : "Mostrar panel izquierdo"}
+              aria-pressed={!sidebarOpen}
+              title={sidebarOpen ? "Ocultar panel izquierdo" : "Mostrar panel izquierdo"}
+              onClick={() => setSidebarOpen((v) => !v)}
+            >
+              <iconify-icon
+                icon={sidebarOpen ? "mdi:chevron-left" : "mdi:chevron-right"}
+                width="18"
+                height="18"
+              />
+              <span className="app-header__label">Espacios</span>
+            </button>
+            <div className="brand brand--inline">
+              <div className="brand-mark">
+                <iconify-icon icon="mdi:file-search-outline" width="18" height="18" />
+              </div>
+              <div className="brand__text">
+                <h1>ISA RAG</h1>
+              </div>
             </div>
             <span
               className={`brand-status${healthOk ? " brand-status--ok" : " brand-status--err"}`}
@@ -455,133 +519,17 @@ const [matching, setMatching] = useState(false);
                 width="16"
                 height="16"
               />
+              <span className="brand-status__label">{healthOk ? "lista" : "offline"}</span>
             </span>
           </div>
-
-          <div className="panel">
-            <p className="section-title">Espacios</p>
-            <div className="row" style={{ marginBottom: 6 }}>
-              <input
-                className="field"
-                value={newSpaceName}
-                onChange={(e) => setNewSpaceName(e.target.value)}
-                placeholder="Nuevo space…"
-                onKeyDown={(e) => e.key === "Enter" && createSpace()}
+          <div className="app-header__right">
+            <button type="button" className="btn-text" onClick={toggleTheme} title="Tema">
+              <iconify-icon
+                icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
+                width="18"
+                height="18"
               />
-              <button type="button" className="btn secondary" onClick={createSpace} disabled={busy}>
-                +
-              </button>
-            </div>
-            <div className="space-list">
-              {spaces.map((s) => (
-                <div
-                  key={s.id}
-                  className={`space-item${s.id === spaceId && mainView !== "home" ? " active" : ""}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openSpace(s.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openSpace(s.id);
-                    }
-                  }}
-                >
-                  <div className="space-item__body">
-                    <strong>{s.name}</strong>
-                    <span>{s.docCount ?? 0} docs</span>
-                  </div>
-                  <div className="space-item__actions" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      title="Editar espacio"
-                      onClick={() => openEditSpace(s)}
-                    >
-                      <iconify-icon icon="mdi:pencil-outline" width="14" height="14" />
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-btn icon-btn--danger"
-                      title="Eliminar espacio"
-                      onClick={() => removeSpace(s)}
-                    >
-                      <iconify-icon icon="mdi:trash-can-outline" width="14" height="14" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {!spaces.length && <p className="err">Crea un espacio para empezar</p>}
-            </div>
-          </div>
-
-          <div className="panel panel--docs">
-            <p className="section-title">Documentos</p>
-            <label
-              className="file-drop"
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.add("drag");
-              }}
-              onDragLeave={(e) => e.currentTarget.classList.remove("drag")}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.remove("drag");
-                onFiles(e.dataTransfer.files);
-              }}
-            >
-              <input
-                className="ir-file-input"
-                type="file"
-                multiple
-                accept=".pdf,.txt,.md,.markdown,.csv,.html,.htm,.json,.docx"
-                onChange={(e) => {
-                  onFiles(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-              <span className="file-drop__text">
-                PDF · MD · TXT · DOCX · CSV · HTML
-                <small>clic o arrastra</small>
-              </span>
-            </label>
-            <ul className="doc-list">
-              {docs.map((d) => (
-                <li
-                  key={d.id}
-                  className={selectedDocId === d.id && mainView === "chunks" ? "active" : undefined}
-                  onClick={() => openChunks(d)}
-                  title="Ver chunks indexados"
-                >
-                  <span>{d.filename}</span>
-                  <span>{d.status}</span>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              className="btn block"
-              onClick={indexDocs}
-              disabled={!spaceId || !docs.length || indexing}
-            >
-              {indexing ? (
-                <>
-                  <iconify-icon icon="svg-spinners:ring-resize" width="14" height="14" /> Indexando…
-                </>
-              ) : indexed ? (
-                <>
-                  <iconify-icon icon="mdi:check" width="14" height="14" /> Reindexar
-                </>
-              ) : (
-                <>
-                  <iconify-icon icon="mdi:database-import" width="14" height="14" /> Indexar
-                </>
-              )}
             </button>
-          </div>
-          {error && <p className="err">{error}</p>}
-
-          <div className="auth-bar">
             {authed ? (
               <>
                 <span className="auth-bar__user" title={authUser || ""}>
@@ -593,138 +541,256 @@ const [matching, setMatching] = useState(false);
                 </button>
               </>
             ) : (
-              <button type="button" className="btn block" onClick={() => setLoginOpen(true)}>
+              <button type="button" className="btn ghost small" onClick={() => setLoginOpen(true)}>
                 <iconify-icon icon="mdi:login" width="14" height="14" /> Login
               </button>
             )}
+            <button
+              type="button"
+              className="app-header__toggle"
+              aria-label={asideOpen ? "Ocultar panel derecho" : "Mostrar panel derecho"}
+              aria-pressed={!asideOpen}
+              title={asideOpen ? "Ocultar panel derecho" : "Mostrar panel derecho"}
+              onClick={() => setAsideOpen((v) => !v)}
+            >
+              <span className="app-header__label">Recursos</span>
+              <iconify-icon
+                icon={asideOpen ? "mdi:chevron-right" : "mdi:chevron-left"}
+                width="18"
+                height="18"
+              />
+            </button>
           </div>
-        </aside>
+        </header>
 
-        <main className="main">
+        <div
+          className="app-body"
+          style={{
+            ["--sidebar-w" as string]: sidebarOpen ? `${sidebarWidth}px` : "0px",
+            ["--aside-w" as string]: asideOpen ? `${asideWidth}px` : "0px",
+          }}
+        >
+          <aside
+            className="sidebar"
+            aria-hidden={!sidebarOpen}
+          >
+            <div className="sidebar__inner">
+              <div className="panel">
+                <p className="section-title">Espacios</p>
+                <div className="row" style={{ marginBottom: 6 }}>
+                  <input
+                    className="field"
+                    value={newSpaceName}
+                    onChange={(e) => setNewSpaceName(e.target.value)}
+                    placeholder="Nuevo space…"
+                    onKeyDown={(e) => e.key === "Enter" && createSpace()}
+                  />
+                  <button type="button" className="btn secondary" onClick={createSpace} disabled={busy}>
+                    +
+                  </button>
+                </div>
+                <div className="space-list">
+                  {spaces.map((s) => (
+                    <div
+                      key={s.id}
+                      className={`space-item${s.id === spaceId && mainView !== "home" ? " active" : ""}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openSpace(s.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openSpace(s.id);
+                        }
+                      }}
+                    >
+                      <div className="space-item__body">
+                        <strong>{s.name}</strong>
+                        <span>{s.docCount ?? 0} docs</span>
+                      </div>
+                      <div className="space-item__actions" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          title="Editar espacio"
+                          onClick={() => openEditSpace(s)}
+                        >
+                          <iconify-icon icon="mdi:pencil-outline" width="14" height="14" />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--danger"
+                          title="Eliminar espacio"
+                          onClick={() => removeSpace(s)}
+                        >
+                          <iconify-icon icon="mdi:trash-can-outline" width="14" height="14" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {!spaces.length && <p className="err">Crea un espacio para empezar</p>}
+                </div>
+              </div>
+
+              <div className="panel panel--docs">
+                <p className="section-title">Documentos</p>
+                <label
+                  className="file-drop"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add("drag");
+                  }}
+                  onDragLeave={(e) => e.currentTarget.classList.remove("drag")}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove("drag");
+                    onFiles(e.dataTransfer.files);
+                  }}
+                >
+                  <input
+                    className="ir-file-input"
+                    type="file"
+                    multiple
+                    accept=".pdf,.txt,.md,.markdown,.csv,.html,.htm,.json,.docx"
+                    onChange={(e) => {
+                      onFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <span className="file-drop__text">
+                    PDF · MD · TXT · DOCX · CSV · HTML
+                    <small>clic o arrastra</small>
+                  </span>
+                </label>
+                <ul className="doc-list">
+                  {docs.map((d) => (
+                    <li
+                      key={d.id}
+                      className={selectedDocId === d.id && mainView === "chunks" ? "active" : undefined}
+                      onClick={() => openChunks(d)}
+                      title="Ver chunks indexados"
+                    >
+                      <span>{d.filename}</span>
+                      <span>{d.status}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  className="btn block"
+                  onClick={indexDocs}
+                  disabled={!spaceId || !docs.length || indexing}
+                >
+                  {indexing ? (
+                    <>
+                      <iconify-icon icon="svg-spinners:ring-resize" width="14" height="14" /> Indexando…
+                    </>
+                  ) : indexed ? (
+                    <>
+                      <iconify-icon icon="mdi:check" width="14" height="14" /> Reindexar
+                    </>
+                  ) : (
+                    <>
+                      <iconify-icon icon="mdi:database-import" width="14" height="14" /> Indexar
+                    </>
+                  )}
+                </button>
+              </div>
+              {error && <p className="err">{error}</p>}
+            </div>
+          </aside>
+
+          {sidebarOpen && (
+            <div
+              className="splitter splitter--sidebar"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Redimensionar panel izquierdo"
+              onPointerDown={(e) => startDrag("sidebar", e)}
+            >
+              <span className="splitter__grip" aria-hidden="true" />
+            </div>
+          )}
+
+          <main className="main">
           {mainView === "home" ? (
             <>
               <header className="topbar">
                 <div>
-                  <h2>ISA RAG</h2>
-                  <p className="caption">Tus espacios de conocimiento · {spaces.length} en total</p>
+                  <h2>Mis espacios</h2>
+                  <p className="caption">
+                    {spaces.length} en total · selecciona uno para empezar
+                  </p>
                 </div>
-                <div className="actions">
-                  <button type="button" className="btn-text" onClick={toggleTheme} title="Tema">
-                    <iconify-icon
-                      icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
-                      width="18"
-                      height="18"
-                    />
-                  </button>
-                </div>
+                <div className="actions" />
               </header>
 
               <div className="home">
-                <section className="home__main">
-                  <h3 className="home__heading">
-                    <iconify-icon icon="mdi:notebook-outline" width="20" height="20" />
-                    Espacios
-                  </h3>
-                  {!spaces.length ? (
-                    <div className="home__empty">
-                      <iconify-icon icon="mdi:notebook-plus-outline" width="40" height="40" />
-                      <p>Crea tu primer espacio desde el panel izquierdo para empezar.</p>
-                    </div>
-                  ) : (
-                    <div className="home__grid">
-                      {spaces.map((s) => {
-                        const st = statsBySpace[s.id];
-                        return (
-                          <article
-                            key={s.id}
-                            className="space-card"
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => openSpace(s.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                openSpace(s.id);
-                              }
-                            }}
-                          >
-                            <div className="space-card__cover" aria-hidden="true">
-                              <iconify-icon icon="mdi:file-search-outline" width="28" height="28" />
-                            </div>
-                            <div className="space-card__body">
-                              <h4>{s.name}</h4>
-                              <p className="space-card__desc">
-                                {s.description || "Sin descripción"}
-                              </p>
-                            </div>
-                            <div className="space-card__meta">
-                              <span className="pill">{s.docCount ?? 0} docs</span>
-                              <span className="pill pill--ghost">abrir →</span>
-                            </div>
-                            <div className="space-card__stats" aria-label="Estadísticas del espacio">
-                              {st ? (
-                                <>
-                                  <span className="stat-chip" title="Eventos totales">
-                                    <iconify-icon icon="mdi:pulse" width="12" height="12" />
-                                    {st.total}
-                                  </span>
-                                  {st.perEvent.ask > 0 && (
-                                    <span className="stat-chip" title="Preguntas">
-                                      <iconify-icon icon="mdi:chat-question-outline" width="12" height="12" />
-                                      {st.perEvent.ask}
-                                    </span>
-                                  )}
-                                  {st.topUsers[0] && (
-                                    <span className="stat-chip" title={`Top usuario: ${st.topUsers[0].username}`}>
-                                      <iconify-icon icon="mdi:account-star-outline" width="12" height="12" />
-                                      {st.topUsers[0].username}
-                                    </span>
-                                  )}
-                                </>
-                              ) : (
-                                <span className="stat-chip stat-chip--muted">sin actividad</span>
-                              )}
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-
-                <aside className="home__aside" aria-label="Crear recurso">
-                  <h3 className="home__heading">
-                    <iconify-icon icon="mdi:auto-fix" width="20" height="20" />
-                    Crear recurso
-                  </h3>
-                  <p className="home__aside-hint">
-                    Elige un espacio activo para generar contenido a partir de tus documentos.
-                  </p>
-                  <div className="resource-list">
-                    {RESOURCE_TEMPLATES.map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        className="resource-btn"
-                        disabled={!active}
-                        title={active ? t.description : "Selecciona un espacio primero"}
-                      >
-                        <span className="resource-btn__icon" aria-hidden="true">
-                          <iconify-icon icon={t.icon} width="18" height="18" />
-                        </span>
-                        <span className="resource-btn__body">
-                          <strong>{t.title}</strong>
-                          <span className="resource-btn__desc">{t.description}</span>
-                        </span>
-                        <iconify-icon
-                          icon={active ? "mdi:plus-circle-outline" : "mdi:lock-outline"}
-                          width="16"
-                          height="16"
-                        />
-                      </button>
-                    ))}
+                {!spaces.length ? (
+                  <div className="home__empty">
+                    <iconify-icon icon="mdi:notebook-plus-outline" width="40" height="40" />
+                    <p>Crea tu primer espacio desde el panel izquierdo para empezar.</p>
                   </div>
-                </aside>
+                ) : (
+                  <div className="home__grid">
+                    {spaces.map((s) => {
+                      const st = statsBySpace[s.id];
+                      return (
+                        <article
+                          key={s.id}
+                          className="space-card"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openSpace(s.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openSpace(s.id);
+                            }
+                          }}
+                        >
+                          <div className="space-card__cover" aria-hidden="true">
+                            <iconify-icon icon="mdi:file-search-outline" width="28" height="28" />
+                          </div>
+                          <div className="space-card__body">
+                            <h4>{s.name}</h4>
+                            <p className="space-card__desc">
+                              {s.description || "Sin descripción"}
+                            </p>
+                          </div>
+                          <div className="space-card__meta">
+                            <span className="pill">{s.docCount ?? 0} docs</span>
+                            <span className="pill pill--ghost">abrir →</span>
+                          </div>
+                          <div className="space-card__stats" aria-label="Estadísticas del espacio">
+                            {st ? (
+                              <>
+                                <span className="stat-chip" title="Eventos totales">
+                                  <iconify-icon icon="mdi:pulse" width="12" height="12" />
+                                  {st.total}
+                                </span>
+                                {st.perEvent.ask > 0 && (
+                                  <span className="stat-chip" title="Preguntas">
+                                    <iconify-icon icon="mdi:chat-question-outline" width="12" height="12" />
+                                    {st.perEvent.ask}
+                                  </span>
+                                )}
+                                {st.topUsers[0] && (
+                                  <span className="stat-chip" title={`Top usuario: ${st.topUsers[0].username}`}>
+                                    <iconify-icon icon="mdi:account-star-outline" width="12" height="12" />
+                                    {st.topUsers[0].username}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="stat-chip stat-chip--muted">sin actividad</span>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </>
           ) : (
@@ -796,13 +862,6 @@ const [matching, setMatching] = useState(false);
                       <iconify-icon icon="mdi:chat-outline" width="18" height="18" />
                     </button>
                   )}
-                  <button type="button" className="btn-text" onClick={toggleTheme} title="Tema">
-                    <iconify-icon
-                      icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
-                      width="18"
-                      height="18"
-                    />
-                  </button>
                   {mainView === "chat" && (
                     <button
                       type="button"
@@ -957,6 +1016,96 @@ const [matching, setMatching] = useState(false);
             </>
           )}
         </main>
+
+          {asideOpen && (
+            <div
+              className="splitter splitter--aside"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Redimensionar panel derecho"
+              onPointerDown={(e) => startDrag("aside", e)}
+            >
+              <span className="splitter__grip" aria-hidden="true" />
+            </div>
+          )}
+
+          <aside
+            className="app-aside"
+            aria-hidden={!asideOpen}
+          >
+            <div className="app-aside__inner">
+              {mainView === "home" ? (
+                <>
+                  <h3 className="home__heading">
+                    <iconify-icon icon="mdi:auto-fix" width="20" height="20" />
+                    Crear recurso
+                  </h3>
+                  <p className="home__aside-hint">
+                    Elige un espacio activo para generar contenido a partir de tus documentos.
+                  </p>
+                  <div className="resource-list">
+                    {RESOURCE_TEMPLATES.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className="resource-btn"
+                        disabled={!active}
+                        title={active ? t.description : "Selecciona un espacio primero"}
+                      >
+                        <span className="resource-btn__icon" aria-hidden="true">
+                          <iconify-icon icon={t.icon} width="18" height="18" />
+                        </span>
+                        <span className="resource-btn__body">
+                          <strong>{t.title}</strong>
+                          <span className="resource-btn__desc">{t.description}</span>
+                        </span>
+                        <iconify-icon
+                          icon={active ? "mdi:plus-circle-outline" : "mdi:lock-outline"}
+                          width="16"
+                          height="16"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="home__heading">
+                    <iconify-icon icon="mdi:auto-fix" width="20" height="20" />
+                    Crear recurso
+                  </h3>
+                  <p className="home__aside-hint">
+                    Recurso activo: <strong>{active?.name || "(ninguno)"}</strong>
+                  </p>
+                  <div className="resource-list">
+                    {RESOURCE_TEMPLATES.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className="resource-btn"
+                        disabled={!active}
+                        title={active ? t.description : "Selecciona un espacio primero"}
+                      >
+                        <span className="resource-btn__icon" aria-hidden="true">
+                          <iconify-icon icon={t.icon} width="18" height="18" />
+                        </span>
+                        <span className="resource-btn__body">
+                          <strong>{t.title}</strong>
+                          <span className="resource-btn__desc">{t.description}</span>
+                        </span>
+                        <iconify-icon
+                          icon={active ? "mdi:plus-circle-outline" : "mdi:lock-outline"}
+                          width="16"
+                          height="16"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </aside>
+        </div>
       </div>
 
       {loginOpen && (
