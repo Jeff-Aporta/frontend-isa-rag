@@ -1,4 +1,4 @@
-/** API client tipado — isa-rag */
+/** API client tipado — isa-rag (+ JWT Bearer) */
 import type {
   AskRequest,
   AskResponse,
@@ -10,6 +10,9 @@ import type {
   Space,
   UpdateSpaceRequest,
 } from "../shared/types.ts";
+
+const TOKEN_KEY = "isa-rag:token";
+const USER_KEY = "isa-rag:user";
 
 const DEFAULT_API =
   typeof location !== "undefined" && location.hostname === "localhost"
@@ -28,14 +31,50 @@ export function apiBase(): string {
   return DEFAULT_API;
 }
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${apiBase()}${path}`, {
-    ...init,
-    headers: {
-      ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-      ...(init?.headers || {}),
-    },
-  });
+export function getToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function getStoredUser(): string | null {
+  try {
+    return localStorage.getItem(USER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setSession(token: string, username: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, username);
+}
+
+export function clearSession(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function req<T>(path: string, init?: RequestInit, auth = true): Promise<T> {
+  const headers: Record<string, string> = {
+    ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (auth) {
+    const t = getToken();
+    if (t) headers.Authorization = `Bearer ${t}`;
+  }
+  const res = await fetch(`${apiBase()}${path}`, { ...init, headers });
   if (!res.ok) {
     let msg = `${res.status} ${res.statusText}`;
     try {
@@ -44,13 +83,28 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* ignore */
     }
-    throw new Error(msg);
+    if (res.status === 401 && auth) clearSession();
+    throw new ApiError(res.status, msg);
   }
   return (await res.json()) as T;
 }
 
+export interface LoginResponse {
+  token: string;
+  expiresAt: string;
+  username: string;
+  ttlSec: number;
+}
+
 export const api = {
-  health: () => req<HealthResponse>("/api/health"),
+  health: () => req<HealthResponse>("/api/health", undefined, false),
+  login: (username: string, password: string) =>
+    req<LoginResponse>(
+      "/api/auth/login",
+      { method: "POST", body: JSON.stringify({ username, password }) },
+      false,
+    ),
+  me: () => req<{ username: string; role?: string }>("/api/auth/me"),
   listSpaces: () => req<{ spaces: Space[] }>("/api/spaces"),
   createSpace: (body: CreateSpaceRequest) =>
     req<{ space: Space }>("/api/spaces", { method: "POST", body: JSON.stringify(body) }),

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "./api.ts";
+import { api, clearSession, getStoredUser, getToken, setSession, ApiError } from "./api.ts";
 import { useTheme } from "./theme.ts";
 import type { ChatMessage, RagChunk, RagDocument, SourceFragment, Space } from "../shared/types.ts";
 import { isSupportedFilename, newId } from "../shared/index.ts";
@@ -46,6 +46,11 @@ export function App() {
   const [editSpaceId, setEditSpaceId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [authed, setAuthed] = useState(() => !!getToken());
+  const [authUser, setAuthUser] = useState<string | null>(() => getStoredUser());
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginUser, setLoginUser] = useState("admn");
+  const [loginPass, setLoginPass] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
 
   const active = spaces.find((s) => s.id === spaceId) || null;
@@ -63,6 +68,10 @@ export function App() {
         setChunks(res.chunks);
       } catch (e) {
         setChunks([]);
+        if (needAuth(e)) {
+          setAuthed(false);
+          setLoginOpen(true);
+        }
         setError(e instanceof Error ? e.message : String(e));
       } finally {
         setChunksBusy(false);
@@ -143,7 +152,18 @@ export function App() {
       try {
         await api.health();
         setHealthOk(true);
-        await refreshSpaces();
+        if (getToken()) {
+          try {
+            const me = await api.me();
+            setAuthed(true);
+            setAuthUser(String(me.username || getStoredUser() || "admn"));
+            await refreshSpaces();
+          } catch {
+            clearSession();
+            setAuthed(false);
+            setAuthUser(null);
+          }
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         setHealthOk(false);
@@ -151,14 +171,55 @@ export function App() {
     })();
   }, [refreshSpaces]);
 
+  async function doLogin() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api.login(loginUser.trim(), loginPass);
+      setSession(res.token, res.username);
+      setAuthed(true);
+      setAuthUser(res.username);
+      setLoginOpen(false);
+      setLoginPass("");
+      await refreshSpaces();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function doLogout() {
+    clearSession();
+    setAuthed(false);
+    setAuthUser(null);
+    setSpaces([]);
+    setDocs([]);
+    setMessages([]);
+    setSpaceId(null);
+    backToChat();
+  }
+
+  function needAuth(e: unknown): boolean {
+    return e instanceof ApiError && e.status === 401;
+  }
+
   useEffect(() => {
-    if (!spaceId) {
-      setDocs([]);
-      backToChat();
+    if (!spaceId || !authed) {
+      if (!spaceId) {
+        setDocs([]);
+        backToChat();
+      }
       return;
     }
-    refreshDocs(spaceId).catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, [spaceId, refreshDocs, backToChat]);
+    refreshDocs(spaceId).catch((e) => {
+      if (needAuth(e)) {
+        setAuthed(false);
+        setLoginOpen(true);
+      }
+      setError(e instanceof Error ? e.message : String(e));
+    });
+  }, [spaceId, refreshDocs, backToChat, authed]);
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
@@ -175,6 +236,10 @@ export function App() {
       setSpaceId(space.id);
       setMessages([]);
     } catch (e) {
+      if (needAuth(e)) {
+        setAuthed(false);
+        setLoginOpen(true);
+      }
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
@@ -407,6 +472,24 @@ export function App() {
             </button>
           </div>
           {error && <p className="err">{error}</p>}
+
+          <div className="auth-bar">
+            {authed ? (
+              <>
+                <span className="auth-bar__user" title={authUser || ""}>
+                  <iconify-icon icon="mdi:account-circle" width="16" height="16" />
+                  {authUser}
+                </span>
+                <button type="button" className="btn-text" title="Cerrar sesión" onClick={doLogout}>
+                  <iconify-icon icon="mdi:logout" width="18" height="18" />
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn block" onClick={() => setLoginOpen(true)}>
+                <iconify-icon icon="mdi:login" width="14" height="14" /> Login
+              </button>
+            )}
+          </div>
         </aside>
 
         <main className="main">
@@ -538,6 +621,50 @@ export function App() {
           )}
         </main>
       </div>
+
+      {loginOpen && (
+        <div className="modal-backdrop" role="presentation" onClick={() => setLoginOpen(false)}>
+          <div
+            className="modal glass-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="login-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="login-title">Login</h3>
+            <p className="modal-hint">Provisional · JWT</p>
+            <label className="modal-field">
+              <span>Usuario</span>
+              <input
+                className="field"
+                value={loginUser}
+                onChange={(e) => setLoginUser(e.target.value)}
+                autoComplete="username"
+                autoFocus
+              />
+            </label>
+            <label className="modal-field">
+              <span>Contraseña</span>
+              <input
+                className="field"
+                type="password"
+                value={loginPass}
+                onChange={(e) => setLoginPass(e.target.value)}
+                autoComplete="current-password"
+                onKeyDown={(e) => e.key === "Enter" && doLogin()}
+              />
+            </label>
+            <div className="modal-actions">
+              <button type="button" className="btn ghost" onClick={() => setLoginOpen(false)}>
+                Cancelar
+              </button>
+              <button type="button" className="btn" onClick={doLogin} disabled={busy}>
+                Entrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editOpen && (
         <div className="modal-backdrop" role="presentation" onClick={() => setEditOpen(false)}>

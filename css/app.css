@@ -184,6 +184,34 @@ html.wa-light .ir-orbs {
 }
 
 /* —— Sidebar glass —— */
+.auth-bar {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ir-line);
+}
+
+.auth-bar__user {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ir-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-hint {
+  margin: -4px 0 0;
+  font-size: 11px;
+  color: var(--ir-muted);
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
