@@ -289,7 +289,6 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
   }, []);
 
   const refreshAllStats = useCallback(async () => {
-    if (!authed) return;
     try {
       const { spaces: list } = await api.listSpaces();
       const entries = await Promise.all(
@@ -308,7 +307,7 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
     } catch {
       /* best-effort */
     }
-  }, [authed]);
+  }, []);
 
   const refreshDocs = useCallback(async (id: string) => {
     const { documents } = await api.listDocuments(id);
@@ -325,14 +324,16 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
             const me = await api.me();
             setAuthed(true);
             setAuthUser(String(me.username || getStoredUser() || "jagudeloe"));
-            await refreshSpaces();
-            await refreshAllStats();
+            setAuthRole(me.role === "admin" ? "admin" : "public");
           } catch {
             clearSession();
             setAuthed(false);
             setAuthUser(null);
+            setAuthRole("public");
           }
         }
+        await refreshSpaces();
+        await refreshAllStats();
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         setHealthOk(false);
@@ -379,8 +380,8 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
   }
 
   useEffect(() => {
-    if (!spaceId || !authed) {
-      if (!spaceId) setDocs([]);
+    if (!spaceId) {
+      setDocs([]);
       return;
     }
     refreshDocs(spaceId).catch((e) => {
@@ -390,7 +391,7 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
       }
       setError(e instanceof Error ? e.message : String(e));
     });
-  }, [spaceId, refreshDocs, authed]);
+  }, [spaceId, refreshDocs]);
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
@@ -599,73 +600,60 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
                 <div className="topbar__row topbar__row--caption">
                   <div className="topbar__caption">
                     <p className="caption">
-                      {authed
-                        ? `${spaces.length} espacios · gestiona y abre tus espacios`
-                        : "Inicia sesion para ver tus espacios"}
+                      {spaces.length} espacios · {canEdit ? "gestiona y abre tus espacios" : "explora y abre cualquier espacio"}
                     </p>
                   </div>
                   <div className="topbar__meta" aria-label="Resumen global">
-                    {authed && (
-                      <>
-                        <span className="stat-chip" title="Documentos totales indexados">
-                          <iconify-icon icon="mdi:file-document-multiple-outline" width="13" height="13" />
-                          {spaces.reduce((acc, s) => acc + (s.docCount ?? 0), 0)} docs
-                        </span>
-                        <span className="stat-chip" title="Espacios con actividad">
-                          <iconify-icon icon="mdi:pulse" width="13" height="13" />
-                          {Object.values(statsBySpace).filter((st) => st.total > 0).length} activos
-                        </span>
-                        {authUser && (
-                          <span className="stat-chip" title={`Sesion activa: ${authUser}`}>
-                            <iconify-icon icon="mdi:account-circle-outline" width="13" height="13" />
-                            {authUser}
-                          </span>
-                        )}
-                      </>
+                    <span className="stat-chip" title="Documentos totales indexados">
+                      <iconify-icon icon="mdi:file-document-multiple-outline" width="13" height="13" />
+                      {spaces.reduce((acc, s) => acc + (s.docCount ?? 0), 0)} docs
+                    </span>
+                    <span className="stat-chip" title="Espacios con actividad">
+                      <iconify-icon icon="mdi:pulse" width="13" height="13" />
+                      {Object.values(statsBySpace).filter((st) => st.total > 0).length} activos
+                    </span>
+                    {authUser && (
+                      <span className="stat-chip" title={`Sesion activa: ${authUser}`}>
+                        <iconify-icon icon="mdi:account-circle-outline" width="13" height="13" />
+                        {authUser}
+                      </span>
                     )}
                   </div>
                 </div>
-                {authed && (
-                  <div className="topbar__row topbar__row--tools" role="toolbar" aria-label="Herramientas de la home">
-                    {canEdit ? (
-                      <div className="home__create">
-                        <input
-                          className="field"
-                          value={newSpaceName}
-                          onChange={(e) => setNewSpaceName(e.target.value)}
-                          placeholder="Nombre del nuevo espacio…"
-                          onKeyDown={(e) => e.key === "Enter" && createSpace()}
-                          aria-label="Nombre del nuevo espacio"
-                        />
-                        <button
-                          type="button"
-                          className="btn"
-                          onClick={createSpace}
-                          disabled={busy || !newSpaceName.trim()}
-                          title="Crear espacio"
-                        >
-                          <iconify-icon icon="mdi:plus" width="14" height="14" />
-                          <span>Crear</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="home__readonly-hint">
-                        <iconify-icon icon="mdi:lock-outline" width="13" height="13" />
-                        Modo lectura · para crear espacios o indexar archivos inicia sesion con un usuario admin
-                      </p>
-                    )}
-                  </div>
-                )}
+                <div className="topbar__row topbar__row--tools" role="toolbar" aria-label="Herramientas de la home">
+                  {canEdit ? (
+                    <div className="home__create">
+                      <input
+                        className="field"
+                        value={newSpaceName}
+                        onChange={(e) => setNewSpaceName(e.target.value)}
+                        placeholder="Nombre del nuevo espacio…"
+                        onKeyDown={(e) => e.key === "Enter" && createSpace()}
+                        aria-label="Nombre del nuevo espacio"
+                      />
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={createSpace}
+                        disabled={busy || !newSpaceName.trim()}
+                        title="Crear espacio"
+                      >
+                        <iconify-icon icon="mdi:plus" width="14" height="14" />
+                        <span>Crear</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="home__readonly-hint">
+                      <iconify-icon icon="mdi:lock-outline" width="13" height="13" />
+                      Modo lectura · para crear espacios o indexar archivos inicia sesion con un usuario admin
+                    </p>
+                  )}
+                </div>
               </header>
 
               <div className="home">
                 {error && <p className="err home__error">{error}</p>}
-                {!authed ? (
-                  <div className="home__empty">
-                    <iconify-icon icon="mdi:lock-outline" width="40" height="40" />
-                    <p>Inicia sesion con el boton de la esquina superior derecha para ver y crear tus espacios.</p>
-                  </div>
-                ) : !spaces.length ? (
+                {!spaces.length ? (
                   <div className="home__empty">
                     <iconify-icon icon="mdi:notebook-plus-outline" width="40" height="40" />
                     <p>Crea tu primer espacio para empezar a subir documentos.</p>
