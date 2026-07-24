@@ -3,6 +3,7 @@ import { api, clearSession, getStoredUser, getToken, setSession, ApiError } from
 import { useTheme } from "./theme.ts";
 import type {
   ChatMessage,
+  QuestionsByFile,
   RagChunk,
   RagDocument,
   ResourceMatch,
@@ -12,7 +13,7 @@ import type {
 } from "../shared/types.ts";
 import { isSupportedFilename, newId, suggestionsForSpaceName } from "../shared/index.ts";
 
-type MainView = "home" | "chat" | "chunks";
+type MainView = "home" | "chat" | "chunks" | "questions";
 
 interface ResourceTemplate {
   id: string;
@@ -97,6 +98,9 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
   const [resourceMatch, setResourceMatch] = useState<ResourceMatch[] | null>(null);
   const [matching, setMatching] = useState(false);
   const [loginPass, setLoginPass] = useState("");
+  // — questions-by-file view —
+  const [questionsByFile, setQuestionsByFile] = useState<QuestionsByFile | null>(null);
+  const [questionsBusy, setQuestionsBusy] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
 
   // —— Layout: panel lateral único (Recursos), ancho persistente ——
@@ -142,6 +146,26 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
     setSelectedDocId(null);
     setChunks([]);
   }, []);
+
+  const openQuestions = useCallback(async () => {
+    if (!spaceId) return;
+    setMainView("questions");
+    setQuestionsBusy(true);
+    setError(null);
+    try {
+      const res = await api.questionsByFile(spaceId);
+      setQuestionsByFile(res);
+    } catch (e) {
+      setQuestionsByFile(null);
+      if (needAuth(e)) {
+        setAuthed(false);
+        setLoginOpen(true);
+      }
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setQuestionsBusy(false);
+    }
+  }, [spaceId]);
 
   const goHome = useCallback(() => {
     setMainView("home");
@@ -759,11 +783,15 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
                     >
                       {mainView === "chunks" && selectedDoc
                         ? selectedDoc.filename
+                        : mainView === "questions"
+                        ? "Preguntas por archivo"
                         : active?.name || "ISA RAG"}
                     </h2>
                     <p className="caption">
                       {mainView === "chunks"
                         ? `${chunks.length} chunks · vista de fragmentos`
+                        : mainView === "questions"
+                        ? `10 preguntas-pattern por archivo — similitud coseno con los embeddings del chunk`
                         : active?.description || "RAG · Neon pgvector · neon-glass"}
                     </p>
                   </div>
@@ -819,6 +847,32 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
                       <span>Reiniciar</span>
                     </button>
                   )}
+                  {(mainView === "chat" || mainView === "questions") && active && (
+                    <button
+                      type="button"
+                      className="btn-text"
+                      onClick={() => (mainView === "questions" ? backToChat() : void openQuestions())}
+                      title={mainView === "questions" ? "Volver a archivos y chat" : "Ver las 10 preguntas relacionadas a cada archivo"}
+                    >
+                      <iconify-icon
+                        icon={mainView === "questions" ? "mdi:file-document-multiple-outline" : "mdi:comment-question-outline"}
+                        width="18"
+                        height="18"
+                      />
+                      <span>{mainView === "questions" ? "Archivos" : "Preguntas"}</span>
+                    </button>
+                  )}
+                  {mainView === "chunks" && (
+                    <button
+                      type="button"
+                      className="btn-text"
+                      onClick={() => active && void openQuestions()}
+                      title="Ver las 10 preguntas relacionadas a cada archivo"
+                    >
+                      <iconify-icon icon="mdi:comment-question-outline" width="18" height="18" />
+                      <span>Preguntas</span>
+                    </button>
+                  )}
                   <button type="button" className="btn-text" onClick={toggleTheme} title="Tema">
                     <iconify-icon
                       icon={theme === "dark" ? "mdi:white-balance-sunny" : "mdi:moon-waning-crescent"}
@@ -859,6 +913,68 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
                         <p className="chunk-card__body">{c.content}</p>
                       </article>
                     ))}
+                </div>
+              ) : mainView === "questions" ? (
+                <div className="questions-view">
+                  {questionsBusy && (
+                    <div className="questions-empty">
+                      <iconify-icon icon="svg-spinners:ring-resize" width="28" height="28" />
+                      <p>Cargando preguntas relacionadas…</p>
+                    </div>
+                  )}
+                  {!questionsBusy && questionsByFile && questionsByFile.files.length === 0 && (
+                    <div className="questions-empty">
+                      <iconify-icon icon="mdi:comment-question-outline" width="28" height="28" />
+                      <p>
+                        Este espacio aún no tiene archivos indexados con embeddings. Sube un documento o ingesta un video para ver las preguntas relacionadas.
+                      </p>
+                    </div>
+                  )}
+                  {!questionsBusy && questionsByFile && questionsByFile.files.length > 0 && (
+                    <>
+                      <div className="questions-summary">
+                        <p className="section-title">Preguntas por archivo</p>
+                        <span className="pill pill--ghost">
+                          {questionsByFile.files.length} archivos · {questionsByFile.files.reduce((s, f) => s + f.questions.length, 0)} preguntas
+                        </span>
+                      </div>
+                      <div className="questions-grid">
+                        {questionsByFile.files.map((entry) => (
+                          <article className="questions-card" key={`${entry.file.kind}:${entry.file.id}`}>
+                            <header className="questions-card__head">
+                              <iconify-icon
+                                icon={entry.file.kind === "youtube" ? "mdi:youtube" : "mdi:file-document-outline"}
+                                width="18"
+                                height="18"
+                              />
+                              <h3 className="questions-card__title" title={entry.file.name}>
+                                {entry.file.name}
+                              </h3>
+                            </header>
+                            {!entry.centroidComputed ? (
+                              <p className="questions-card__empty">
+                                <iconify-icon icon="mdi:lock-outline" width="14" height="14" /> Sin embeddings en este archivo.
+                              </p>
+                            ) : !entry.questions.length ? (
+                              <p className="questions-card__empty">Aún no hay preguntas-pattern en este espacio.</p>
+                            ) : (
+                              <ol className="questions-list">
+                                {entry.questions.map((q, i) => (
+                                  <li key={q.id} className="questions-list__item">
+                                    <span className="questions-list__num">{i + 1}</span>
+                                    <p className="questions-list__text">{q.text}</p>
+                                    <span className="questions-list__score" title={`score ${q.score.toFixed(3)}`}>
+                                      {(q.score * 100).toFixed(0)}%
+                                    </span>
+                                  </li>
+                                ))}
+                              </ol>
+                            )}
+                          </article>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <>

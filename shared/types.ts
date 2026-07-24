@@ -197,6 +197,37 @@ export interface IndexJobResult {
   embeddingModel: typeof EMBEDDING_MODEL;
 }
 
+// —— Questions by file (centroid-vs-resource_question) ——
+
+export interface QuestionByFile {
+  id: string;
+  text: string;
+  source: "generated" | "manual";
+  resourceId: ResourceId;
+  score: number;
+}
+
+export interface QuestionsByFileFile {
+  kind: "document" | "youtube";
+  id: string;
+  name: string;
+  mime?: string | null;
+  youtube_video_id?: string | null;
+  url?: string | null;
+}
+
+export interface QuestionsByFileEntry {
+  file: QuestionsByFileFile;
+  centroidComputed: boolean;
+  questions: QuestionByFile[];
+}
+
+export interface QuestionsByFile {
+  spaceId: string;
+  spaceName: string;
+  files: QuestionsByFileEntry[];
+}
+
 // —— YouTube references por espacio ——
 
 export interface YoutubeVideo {

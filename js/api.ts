@@ -5,6 +5,7 @@ import type {
   CreateSpaceRequest,
   HealthResponse,
   IndexJobResult,
+  QuestionsByFile,
   RagChunk,
   RagDocument,
   ResourceMatchResponse,
@@ -179,4 +180,6 @@ export const api = {
       `/api/spaces/${encodeURIComponent(spaceId)}/resources/match`,
       { method: "POST", body: JSON.stringify({ question, top }) },
     ),
+  questionsByFile: (spaceId: string) =>
+    req<QuestionsByFile>(`/api/spaces/${encodeURIComponent(spaceId)}/questions`),
 };
