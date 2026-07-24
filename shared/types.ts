@@ -197,6 +197,46 @@ export interface IndexJobResult {
   embeddingModel: typeof EMBEDDING_MODEL;
 }
 
+// —— YouTube references por espacio ——
+
+export interface YoutubeVideo {
+  id: string;
+  space_id: string;
+  reference_id: string | null;
+  youtube_video_id: string;
+  title: string | null;
+  channel: string | null;
+  url: string | null;
+  lang: string | null;
+  duration_seconds: number | null;
+  status: "pending" | "indexed" | "error";
+  error_message: string | null;
+  chunks_count: number;
+  created_at: string;
+}
+
+export interface YoutubeIngestRequest {
+  youtubeVideoId: string;
+  title?: string;
+  channel?: string;
+  url?: string;
+  lang?: string;
+  durationSeconds?: number;
+  /** SUBTITULO_JSON de BD_DOCS2RAG.YT_SUBTITULO o equivalente. */
+  subtituloJson: unknown;
+}
+
+export interface YoutubeIngestResponse {
+  videoId: string;
+  referenceId: string;
+  chunks: number;
+  status: "indexed";
+}
+
+export interface YoutubeListResponse {
+  videos: YoutubeVideo[];
+}
+
 export interface HealthResponse {
   ok: boolean;
   service: "worker-isa-rag";
