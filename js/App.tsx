@@ -564,7 +564,8 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
         <div
           className="app-body"
           style={{
-            ["--aside-w" as string]: asideOpen ? `${asideWidth}px` : "0px",
+            ["--aside-w" as string]:
+              mainView !== "home" && asideOpen ? `${asideWidth}px` : "0px",
           }}
         >
           <main className="main">
