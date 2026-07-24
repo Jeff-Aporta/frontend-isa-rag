@@ -65,8 +65,8 @@ writeFileSync(join(dist, "build-meta.json"), JSON.stringify(meta, null, 2) + "\n
 const indexPath = join(root, "index.html");
 let indexHtml = readFileSync(indexPath, "utf8");
 const versioned = indexHtml
-  .replaceAll('href="_dist/css/app.css"', `href="_dist/css/app.css?v=${meta.hash}"`)
-  .replaceAll('src="_dist/js/main.js"', `src="_dist/js/main.js?v=${meta.hash}"`);
+  .replace(/_dist\/css\/app\.css(\?v=[a-z0-9]+)?/, `_dist/css/app.css?v=${meta.hash}`)
+  .replace(/_dist\/js\/main\.js(\?v=[a-z0-9]+)?/, `_dist/js/main.js?v=${meta.hash}`);
 if (versioned !== indexHtml) {
   writeFileSync(indexPath, versioned, "utf8");
   console.log(`OK index.html versionado con ?v=${meta.hash}`);
