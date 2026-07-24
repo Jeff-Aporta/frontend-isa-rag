@@ -851,7 +851,10 @@ const [loginUser, setLoginUser] = useState("jagudeloe");
                     <button
                       type="button"
                       className="btn-text"
-                      onClick={() => (mainView === "questions" ? backToChat() : void openQuestions())}
+                      onClick={() => {
+                        if (mainView === "questions") backToChat();
+                        else openQuestions();
+                      }}
                       title={mainView === "questions" ? "Volver a archivos y chat" : "Ver las 10 preguntas relacionadas a cada archivo"}
                     >
                       <iconify-icon
