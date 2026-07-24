@@ -90,8 +90,9 @@ export function App() {
   const [editDesc, setEditDesc] = useState("");
   const [authed, setAuthed] = useState(() => !!getToken());
 const [authUser, setAuthUser] = useState<string | null>(() => getStoredUser());
+const [authRole, setAuthRole] = useState<"admin" | "public">("public");
 const [loginOpen, setLoginOpen] = useState(false);
-const [loginUser, setLoginUser] = useState("admn");
+const [loginUser, setLoginUser] = useState("jagudeloe");
   const [statsBySpace, setStatsBySpace] = useState<Record<string, SpaceStats>>({});
   const [resourceMatch, setResourceMatch] = useState<ResourceMatch[] | null>(null);
   const [matching, setMatching] = useState(false);
@@ -299,7 +300,7 @@ const [loginUser, setLoginUser] = useState("admn");
           try {
             const me = await api.me();
             setAuthed(true);
-            setAuthUser(String(me.username || getStoredUser() || "admn"));
+            setAuthUser(String(me.username || getStoredUser() || "jagudeloe"));
             await refreshSpaces();
             await refreshAllStats();
           } catch {
@@ -323,6 +324,7 @@ const [loginUser, setLoginUser] = useState("admn");
       setSession(res.token, res.username);
       setAuthed(true);
       setAuthUser(res.username);
+      setAuthRole(res.role === "admin" ? "admin" : "public");
       setLoginOpen(false);
       setLoginPass("");
       await refreshSpaces();
@@ -338,12 +340,15 @@ const [loginUser, setLoginUser] = useState("admn");
     clearSession();
     setAuthed(false);
     setAuthUser(null);
+    setAuthRole("public");
     setSpaces([]);
     setDocs([]);
     setMessages([]);
     setSpaceId(null);
     setMainView("home");
   }
+
+  const canEdit = authRole === "admin";
 
   function needAuth(e: unknown): boolean {
     return e instanceof ApiError && e.status === 401;
@@ -526,6 +531,17 @@ const [loginUser, setLoginUser] = useState("admn");
                   <iconify-icon icon="mdi:account-circle" width="16" height="16" />
                   {authUser}
                 </span>
+                {authRole === "admin" ? (
+                  <span className="role-badge role-badge--admin" title="Permisos de administracion: puede agregar / indexar archivos">
+                    <iconify-icon icon="mdi:shield-key-outline" width="13" height="13" />
+                    admin
+                  </span>
+                ) : (
+                  <span className="role-badge role-badge--public" title="Permisos de solo consulta">
+                    <iconify-icon icon="mdi:eye-outline" width="13" height="13" />
+                    lectura
+                  </span>
+                )}
                 <button type="button" className="btn-text" title="Cerrar sesión" onClick={doLogout}>
                   <iconify-icon icon="mdi:logout" width="18" height="18" />
                 </button>
@@ -582,41 +598,37 @@ const [loginUser, setLoginUser] = useState("admn");
                         )}
                       </>
                     )}
-                    {!authed && (
-                      <button
-                        type="button"
-                        className="btn"
-                        onClick={() => setLoginOpen(true)}
-                        title="Iniciar sesion"
-                      >
-                        <iconify-icon icon="mdi:login-variant" width="14" height="14" />
-                        <span>Login</span>
-                      </button>
-                    )}
                   </div>
                 </div>
                 {authed && (
                   <div className="topbar__row topbar__row--tools" role="toolbar" aria-label="Herramientas de la home">
-                    <div className="home__create">
-                      <input
-                        className="field"
-                        value={newSpaceName}
-                        onChange={(e) => setNewSpaceName(e.target.value)}
-                        placeholder="Nombre del nuevo espacio…"
-                        onKeyDown={(e) => e.key === "Enter" && createSpace()}
-                        aria-label="Nombre del nuevo espacio"
-                      />
-                      <button
-                        type="button"
-                        className="btn"
-                        onClick={createSpace}
-                        disabled={busy || !newSpaceName.trim()}
-                        title="Crear espacio"
-                      >
-                        <iconify-icon icon="mdi:plus" width="14" height="14" />
-                        <span>Crear</span>
-                      </button>
-                    </div>
+                    {canEdit ? (
+                      <div className="home__create">
+                        <input
+                          className="field"
+                          value={newSpaceName}
+                          onChange={(e) => setNewSpaceName(e.target.value)}
+                          placeholder="Nombre del nuevo espacio…"
+                          onKeyDown={(e) => e.key === "Enter" && createSpace()}
+                          aria-label="Nombre del nuevo espacio"
+                        />
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={createSpace}
+                          disabled={busy || !newSpaceName.trim()}
+                          title="Crear espacio"
+                        >
+                          <iconify-icon icon="mdi:plus" width="14" height="14" />
+                          <span>Crear</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="home__readonly-hint">
+                        <iconify-icon icon="mdi:lock-outline" width="13" height="13" />
+                        Modo lectura · para crear espacios o indexar archivos inicia sesion con un usuario admin
+                      </p>
+                    )}
                   </div>
                 )}
               </header>
@@ -626,16 +638,7 @@ const [loginUser, setLoginUser] = useState("admn");
                 {!authed ? (
                   <div className="home__empty">
                     <iconify-icon icon="mdi:lock-outline" width="40" height="40" />
-                    <p>Inicia sesion para ver y crear tus espacios.</p>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => setLoginOpen(true)}
-                      title="Iniciar sesion"
-                    >
-                      <iconify-icon icon="mdi:login-variant" width="14" height="14" />
-                      <span>Login</span>
-                    </button>
+                    <p>Inicia sesion con el boton de la esquina superior derecha para ver y crear tus espacios.</p>
                   </div>
                 ) : !spaces.length ? (
                   <div className="home__empty">
@@ -702,24 +705,28 @@ const [loginUser, setLoginUser] = useState("admn");
                             onClick={(e) => e.stopPropagation()}
                             onKeyDown={(e) => e.stopPropagation()}
                           >
-                            <button
-                              type="button"
-                              className="icon-btn"
-                              title="Editar espacio"
-                              aria-label={`Editar ${s.name}`}
-                              onClick={() => openEditSpace(s)}
-                            >
-                              <iconify-icon icon="mdi:pencil-outline" width="14" height="14" />
-                            </button>
-                            <button
-                              type="button"
-                              className="icon-btn icon-btn--danger"
-                              title="Eliminar espacio"
-                              aria-label={`Eliminar ${s.name}`}
-                              onClick={() => removeSpace(s)}
-                            >
-                              <iconify-icon icon="mdi:trash-can-outline" width="14" height="14" />
-                            </button>
+                            {canEdit && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="icon-btn"
+                                  title="Editar espacio"
+                                  aria-label={`Editar ${s.name}`}
+                                  onClick={() => openEditSpace(s)}
+                                >
+                                  <iconify-icon icon="mdi:pencil-outline" width="14" height="14" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="icon-btn icon-btn--danger"
+                                  title="Eliminar espacio"
+                                  aria-label={`Eliminar ${s.name}`}
+                                  onClick={() => removeSpace(s)}
+                                >
+                                  <iconify-icon icon="mdi:trash-can-outline" width="14" height="14" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </article>
                       );
@@ -860,7 +867,13 @@ const [loginUser, setLoginUser] = useState("admn");
                       <span className="docs-panel__count">
                         {indexed}/{docs.length} indexados
                       </span>
+                      {!canEdit && authed && (
+                        <span className="pill pill--ghost" title="Solo administradores pueden subir archivos">
+                          <iconify-icon icon="mdi:lock-outline" width="12" height="12" /> solo admin
+                        </span>
+                      )}
                     </div>
+                    {canEdit ? (
                     <label
                       className="file-drop"
                       onDragOver={(e) => {
@@ -889,6 +902,15 @@ const [loginUser, setLoginUser] = useState("admn");
                         <small>clic o arrastra</small>
                       </span>
                     </label>
+                    ) : (
+                      <div className="file-drop file-drop--readonly" aria-disabled="true">
+                        <iconify-icon icon="mdi:lock-outline" width="22" height="22" />
+                        <span className="file-drop__text">
+                          Subida deshabilitada
+                          <small>solo administradores pueden agregar archivos</small>
+                        </span>
+                      </div>
+                    )}
                     <ul className="doc-list">
                       {docs.map((d) => (
                         <li
@@ -906,7 +928,8 @@ const [loginUser, setLoginUser] = useState("admn");
                       type="button"
                       className="btn block"
                       onClick={indexDocs}
-                      disabled={!spaceId || !docs.length || indexing}
+                      disabled={!spaceId || !docs.length || indexing || !canEdit}
+                      title={canEdit ? "Indexar / reindexar" : "Solo administradores pueden indexar"}
                     >
                       {indexing ? (
                         <>

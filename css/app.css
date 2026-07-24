@@ -467,23 +467,27 @@ html.wa-dark .app-aside__inner {
 }
 
 .brand-text {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   line-height: 1;
   white-space: nowrap;
   background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue) 55%, var(--neon-magenta));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.35));
   user-select: none;
+  margin-left: 6px;
+  font-family: var(--ir-font);
 }
 
 html.wa-light .brand-text {
-  background: none;
-  -webkit-background-clip: unset;
-  background-clip: unset;
-  color: var(--ir-text);
+  background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: none;
 }
 
 .section-title {
@@ -1625,4 +1629,85 @@ html.wa-light .composer {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* role badge en header — admin/lectura */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  border: 1px solid var(--ir-line);
+  background: var(--ir-glass);
+  color: var(--ir-muted);
+  white-space: nowrap;
+}
+.role-badge--admin {
+  border-color: color-mix(in srgb, var(--neon-cyan) 45%, transparent);
+  color: var(--neon-cyan);
+  background: color-mix(in srgb, var(--neon-cyan) 10%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--neon-cyan) 25%, transparent);
+}
+.role-badge--public {
+  border-color: color-mix(in srgb, var(--neon-magenta) 35%, transparent);
+  color: var(--neon-magenta);
+  background: color-mix(in srgb, var(--neon-magenta) 8%, transparent);
+}
+
+/* home__readonly-hint en topbar cuando hay sesion pero no es admin */
+.home__readonly-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  color: var(--neon-magenta);
+  background: color-mix(in srgb, var(--neon-magenta) 8%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--neon-magenta) 35%, transparent);
+  border-radius: 999px;
+}
+
+/* file-drop en modo solo lectura */
+.file-drop--readonly {
+  cursor: not-allowed;
+  border-style: dashed;
+  background: color-mix(in srgb, var(--ir-line) 30%, transparent);
+  color: var(--ir-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 18px;
+  border-radius: var(--ir-radius);
+  border: 1px dashed var(--ir-line);
+}
+.file-drop--readonly:hover,
+.file-drop--readonly.drag {
+  border-color: var(--ir-line);
+  background: color-mix(in srgb, var(--ir-line) 30%, transparent);
+}
+
+/* pill generico para chips cortos (ej: "solo admin" en panel de docs) */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  border: 1px solid var(--ir-line);
+  background: var(--ir-glass);
+  color: var(--ir-muted);
+}
+.pill--ghost {
+  background: transparent;
 }
