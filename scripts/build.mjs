@@ -59,5 +59,18 @@ const meta = {
 };
 
 writeFileSync(join(dist, "build-meta.json"), JSON.stringify(meta, null, 2) + "\n", "utf8");
+
+// Inyecta el hash del build en index.html como ?v=<hash> en el script y css
+// para que los browsers invaliden cache al deployar.
+const indexPath = join(root, "index.html");
+let indexHtml = readFileSync(indexPath, "utf8");
+const versioned = indexHtml
+  .replaceAll('href="_dist/css/app.css"', `href="_dist/css/app.css?v=${meta.hash}"`)
+  .replaceAll('src="_dist/js/main.js"', `src="_dist/js/main.js?v=${meta.hash}"`);
+if (versioned !== indexHtml) {
+  writeFileSync(indexPath, versioned, "utf8");
+  console.log(`OK index.html versionado con ?v=${meta.hash}`);
+}
+
 const pct = meta.bytesIn ? Math.round((1 - meta.bytesOut / meta.bytesIn) * 100) : 0;
 console.log(`OK _dist hash=${meta.hash} ${meta.bytesIn} → ${meta.bytesOut} B (−${pct}%)`);
