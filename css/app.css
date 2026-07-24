@@ -466,19 +466,20 @@ html.wa-dark .app-aside__inner {
   color: #fff;
 }
 
-.home__brand {
-  margin: 0 0 4px;
-  font-size: 26px;
+.brand-text {
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
   background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue) 55%, var(--neon-magenta));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  user-select: none;
 }
 
-html.wa-light .home__brand {
+html.wa-light .brand-text {
   background: none;
   -webkit-background-clip: unset;
   background-clip: unset;

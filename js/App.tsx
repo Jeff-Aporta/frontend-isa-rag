@@ -483,6 +483,7 @@ const [loginUser, setLoginUser] = useState("admn");
             <div className="brand-mark brand-mark--inline" aria-hidden="true">
               <iconify-icon icon="mdi:file-search-outline" width="18" height="18" />
             </div>
+            <span className="brand-text">ISA RAG</span>
             <span
               className={`brand-status${healthOk ? " brand-status--ok" : " brand-status--err"}`}
               title={healthOk ? "API lista" : "API no disponible"}
@@ -556,7 +557,6 @@ const [loginUser, setLoginUser] = useState("admn");
               <header className="topbar">
                 <div className="topbar__row topbar__row--caption">
                   <div className="topbar__caption">
-                    <h1 className="home__brand">ISA RAG</h1>
                     <p className="caption">
                       {spaces.length} espacios · gestiona y abre tus espacios
                     </p>
