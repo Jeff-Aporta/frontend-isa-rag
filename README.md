@@ -4,9 +4,9 @@ Chat con tus documentos (estilo NotebookLM / FitDocs). React 18 + WebAwesome + I
 
 | | |
 |---|---|
-| Pages | https://jeff-aporta.github.io/frontend-isa-rag/ |
+| Pages | https://jeff-aporta.github.io/isa-rag/ |
 | API | https://worker-isa-rag.jeffaporta.workers.dev |
-| Types CDN | `https://cdn.jsdelivr.net/gh/Jeff-Aporta/frontend-isa-rag@main/shared/types.ts` |
+| Types CDN | `https://cdn.jsdelivr.net/gh/Jeff-Aporta/isa-rag@main/shared/types.ts` |
 
 ## Dev
 

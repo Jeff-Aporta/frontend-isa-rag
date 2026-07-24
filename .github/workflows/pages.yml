@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-frontend-isa-rag
+  group: pages-isa-rag
   cancel-in-progress: true
 
 jobs:

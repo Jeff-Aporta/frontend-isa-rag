@@ -1,7 +1,7 @@
 /**
  * Tipos compartidos isa-rag (fuente de verdad).
  * CDN (tras push a main):
- *   https://cdn.jsdelivr.net/gh/Jeff-Aporta/frontend-isa-rag@main/shared/types.ts
+ *   https://cdn.jsdelivr.net/gh/Jeff-Aporta/isa-rag@main/shared/types.ts
  * Worker: vendor vía `npm run sync:shared` (wrangler no resuelve https:// en bundle).
  */
 

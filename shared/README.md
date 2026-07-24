@@ -4,11 +4,11 @@ Fuente de verdad para front y worker.
 
 ## CDN (jsDelivr)
 
-Tras push a `main` de `frontend-isa-rag`:
+Tras push a `main` de `isa-rag`:
 
 ```ts
 import type { AskRequest, AskResponse, Space } from
-  "https://cdn.jsdelivr.net/gh/Jeff-Aporta/frontend-isa-rag@main/shared/types.ts";
+  "https://cdn.jsdelivr.net/gh/Jeff-Aporta/isa-rag@main/shared/types.ts";
 ```
 
 ## Worker

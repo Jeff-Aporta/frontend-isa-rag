@@ -1,16 +1,16 @@
 {
-  "name": "frontend-isa-rag",
+  "name": "isa-rag",
   "version": "1.0.0",
   "private": true,
   "description": "ISA RAG — chat con tus documentos (NotebookLM-style). React + WebAwesome + neon-glass. Types compartidos vía jsDelivr.",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Jeff-Aporta/frontend-isa-rag.git"
+    "url": "https://github.com/Jeff-Aporta/isa-rag.git"
   },
-  "homepage": "https://jeff-aporta.github.io/frontend-isa-rag/",
+  "homepage": "https://jeff-aporta.github.io/isa-rag/",
   "bugs": {
-    "url": "https://github.com/Jeff-Aporta/frontend-isa-rag/issues"
+    "url": "https://github.com/Jeff-Aporta/isa-rag/issues"
   },
   "author": "Jeff-Aporta",
   "license": "MIT",
